@@ -1,0 +1,145 @@
+---- root_solver Matches (97 in 14 files) ----
+Adagrad_solver.cpp (src\caffe\solvers):  CHECK(Caffe::root_solver());
+Common.cpp (src\caffe):      solver_count_(1), root_solver_(true) { }
+Common.cpp (src\caffe):    mode_(Caffe::CPU), solver_count_(1), root_solver_(true) {
+Common.hpp (include\caffe):  inline static bool root_solver() { return Get().root_solver_; }
+Common.hpp (include\caffe):  inline static void set_root_solver(bool val) { Get().root_solver_ = val; }
+Common.hpp (include\caffe):  bool root_solver_;
+Data_transformer.cpp (src\caffe):    if (Caffe::root_solver()) {
+Internal_thread.cpp (src\caffe):  bool root_solver = Caffe::root_solver();
+Internal_thread.cpp (src\caffe):          rand_seed, solver_count, root_solver));
+Internal_thread.cpp (src\caffe):    int solver_count, bool root_solver) {
+Internal_thread.cpp (src\caffe):  Caffe::set_root_solver(root_solver);
+Internal_thread.hpp (include\caffe):      bool root_solver);
+Layer_factory.hpp (include\caffe):    if (Caffe::root_solver()) {
+Nesterov_solver.cpp (src\caffe\solvers):  CHECK(Caffe::root_solver());
+Net.cpp (src\caffe):  CHECK(Caffe::root_solver() || root_net_)
+Net.cpp (src\caffe):  LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):    bool share_from_root = !Caffe::root_solver()
+Net.cpp (src\caffe):    LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):    LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):      LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):        LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):    LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):    if (Caffe::root_solver()) {
+Net.cpp (src\caffe):    LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):  LOG_IF(INFO, Caffe::root_solver()) << "Network initialization done.";
+Net.cpp (src\caffe):        LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):      LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):      LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):      LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):      LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):    LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):    if (Caffe::root_solver()) {
+Net.cpp (src\caffe):  LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):    LOG_IF(INFO, Caffe::root_solver()) << "Sharing parameters '" << param_name
+Net.cpp (src\caffe):    LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):    LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):    LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):    LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):    LOG_IF(INFO, Caffe::root_solver())
+Net.cpp (src\caffe):    LOG_IF(INFO, Caffe::root_solver())
+Parallel.cpp (src\caffe):Params<Dtype>::Params(shared_ptr<Solver<Dtype> > root_solver)
+Parallel.cpp (src\caffe):    : size_(total_size<Dtype>(root_solver->net()->learnable_params())),
+Parallel.cpp (src\caffe):GPUParams<Dtype>::GPUParams(shared_ptr<Solver<Dtype> > root_solver, int device)
+Parallel.cpp (src\caffe):    : Params<Dtype>(root_solver) {
+Parallel.cpp (src\caffe):      root_solver->net()->learnable_params();
+Parallel.cpp (src\caffe):P2PSync<Dtype>::P2PSync(shared_ptr<Solver<Dtype> > root_solver,
+Parallel.cpp (src\caffe):    : GPUParams<Dtype>(root_solver, param.device_id()),
+Parallel.cpp (src\caffe):      initial_iter_(root_solver->iter()),
+Parallel.cpp (src\caffe):    solver_ = root_solver;
+Parallel.cpp (src\caffe):    Caffe::set_root_solver(false);
+Parallel.cpp (src\caffe):    solver_.reset(new WorkerSolver<Dtype>(param, root_solver.get()));
+Parallel.cpp (src\caffe):    Caffe::set_root_solver(true);
+Parallel.cpp (src\caffe):  CHECK(Caffe::root_solver());
+Parallel.cpp (src\caffe):  Caffe::set_root_solver(false);
+Parallel.hpp (include\caffe):  explicit Params(shared_ptr<Solver<Dtype> > root_solver);
+Parallel.hpp (include\caffe):  GPUParams(shared_ptr<Solver<Dtype> > root_solver, int device);
+Parallel.hpp (include\caffe):  explicit P2PSync(shared_ptr<Solver<Dtype> > root_solver,
+Sgd_solver.cpp (src\caffe\solvers):  CHECK(Caffe::root_solver());
+Solver.cpp (src\caffe):Solver<Dtype>::Solver(const SolverParameter& param, const Solver* root_solver)
+Solver.cpp (src\caffe):    : net_(), callbacks_(), root_solver_(root_solver),
+Solver.cpp (src\caffe):Solver<Dtype>::Solver(const string& param_file, const Solver* root_solver)
+Solver.cpp (src\caffe):    : net_(), callbacks_(), root_solver_(root_solver),
+Solver.cpp (src\caffe):  CHECK(Caffe::root_solver() || root_solver_)
+Solver.cpp (src\caffe):      << "root_solver_ needs to be set for all non-root solvers";
+Solver.cpp (src\caffe):  LOG_IF(INFO, Caffe::root_solver()) << "Initializing solver from parameters: "
+Solver.cpp (src\caffe):  if (Caffe::root_solver() && param_.random_seed() >= 0) {
+Solver.cpp (src\caffe):  if (Caffe::root_solver()) {
+Solver.cpp (src\caffe):    LOG_IF(INFO, Caffe::root_solver())
+Solver.cpp (src\caffe):    LOG_IF(INFO, Caffe::root_solver())
+Solver.cpp (src\caffe):    LOG_IF(INFO, Caffe::root_solver())
+Solver.cpp (src\caffe):    LOG_IF(INFO, Caffe::root_solver())
+Solver.cpp (src\caffe):  if (Caffe::root_solver()) {
+Solver.cpp (src\caffe):    net_.reset(new Net<Dtype>(net_param, root_solver_->net_.get()));
+Solver.cpp (src\caffe):  CHECK(Caffe::root_solver());
+Solver.cpp (src\caffe):    if (Caffe::root_solver()) {
+Solver.cpp (src\caffe):          root_solver_->test_nets_[i].get()));
+Solver.cpp (src\caffe):        && Caffe::root_solver()) {
+Solver.cpp (src\caffe):      LOG_IF(INFO, Caffe::root_solver()) << "Iteration " << iter_
+Solver.cpp (src\caffe):          LOG_IF(INFO, Caffe::root_solver()) << "    Train net output #"
+Solver.cpp (src\caffe):         && Caffe::root_solver()) ||
+Solver.cpp (src\caffe):  CHECK(Caffe::root_solver());
+Solver.cpp (src\caffe):  CHECK(Caffe::root_solver());
+Solver.cpp (src\caffe):  CHECK(Caffe::root_solver());
+Solver.cpp (src\caffe):  if (Caffe::root_solver() && param_.snapshot()) {
+Solver.cpp (src\caffe):  CHECK(Caffe::root_solver());
+Solver.hpp (include\caffe):      const Solver* root_solver = NULL);
+Solver.hpp (include\caffe):  explicit Solver(const string& param_file, const Solver* root_solver = NULL);
+Solver.hpp (include\caffe):  const Solver* const root_solver_;
+Solver.hpp (include\caffe):      const Solver<Dtype>* root_solver = NULL)
+Solver.hpp (include\caffe):      : Solver<Dtype>(param, root_solver) {}
+---- ->Backward( Matches (38 in 11 files) ----
+Caffe.cpp (tools):      layers[i]->Backward(top_vecs[i], bottom_need_backward[i],
+Caffe_.cpp (matlab\+caffe\private):  net->Backward();
+Lrn_layer.cpp (src\caffe\layers):    product_layer_->Backward(top, product_propagate_down, product_bottom_vec_);
+Lrn_layer.cpp (src\caffe\layers):    power_layer_->Backward(power_top_vec_, propagate_down, pool_top_vec_);
+Lrn_layer.cpp (src\caffe\layers):    pool_layer_->Backward(pool_top_vec_, propagate_down, square_top_vec_);
+Lrn_layer.cpp (src\caffe\layers):    square_layer_->Backward(square_top_vec_, propagate_down,
+Lrn_layer.cpp (src\caffe\layers):    split_layer_->Backward(split_top_vec_, propagate_down, bottom);
+Net.cpp (src\caffe):      layers_[i]->Backward(
+Scale_layer.cpp (src\caffe\layers):    bias_layer_->Backward(top, bias_propagate_down_, bias_bottom_vec_);
+Spp_layer.cpp (src\caffe\layers):    pooling_layers_[0]->Backward(top, propagate_down, bottom);
+Spp_layer.cpp (src\caffe\layers):  concat_layer_->Backward(top, concat_propagate_down, concat_bottom_vec_);
+Spp_layer.cpp (src\caffe\layers):    flatten_layers_[i]->Backward(
+Spp_layer.cpp (src\caffe\layers):    pooling_layers_[i]->Backward(
+Spp_layer.cpp (src\caffe\layers):  split_layer_->Backward(split_top_vec_, propagate_down, bottom);
+Test_bias_layer.cpp (src\caffe\test):  layer->Backward(this->blob_top_vec_, propagate_down, this->blob_bottom_vec_);
+Test_bias_layer.cpp (src\caffe\test):  layer->Backward(this->blob_top_vec_, propagate_down, this->blob_bottom_vec_);
+Test_bias_layer.cpp (src\caffe\test):  layer->Backward(this->blob_top_vec_, propagate_down, this->blob_bottom_vec_);
+Test_bias_layer.cpp (src\caffe\test):  layer->Backward(this->blob_top_vec_, propagate_down, this->blob_bottom_vec_);
+Test_gradient_check_util.hpp (include\caffe\test):  layer->Backward(top, propagate_down, bottom);
+Test_inner_product_layer.cpp (src\caffe\test):    layer->Backward(this->blob_top_vec_,
+Test_inner_product_layer.cpp (src\caffe\test):    ip_t->Backward(this->blob_top_vec_, propagate_down, this->blob_bottom_vec_);
+Test_net.cpp (src\caffe\test):  net->Backward();
+Test_net.cpp (src\caffe\test):  net->Backward();
+Test_net.cpp (src\caffe\test):  this->net_->Backward();
+Test_net.cpp (src\caffe\test):  this->net_->Backward();
+Test_net.cpp (src\caffe\test):  this->net_->Backward();
+Test_net.cpp (src\caffe\test):  this->net_->Backward();
+Test_net.cpp (src\caffe\test):  this->net_->Backward();
+Test_net.cpp (src\caffe\test):  this->net_->Backward();
+Test_net.cpp (src\caffe\test):  this->net_->Backward();
+Test_net.cpp (src\caffe\test):  this->net_->Backward();
+Test_net.cpp (src\caffe\test):  this->net_->Backward();
+Test_net.cpp (src\caffe\test):  this->net_->Backward();
+Test_net.cpp (src\caffe\test):  this->net_->Backward();
+Test_scale_layer.cpp (src\caffe\test):  layer->Backward(this->blob_top_vec_, propagate_down, this->blob_bottom_vec_);
+Test_scale_layer.cpp (src\caffe\test):  layer->Backward(this->blob_top_vec_, propagate_down, this->blob_bottom_vec_);
+Test_scale_layer.cpp (src\caffe\test):  layer->Backward(this->blob_top_vec_, propagate_down, this->blob_bottom_vec_);
+Test_scale_layer.cpp (src\caffe\test):  layer->Backward(this->blob_top_vec_, propagate_down, this->blob_bottom_vec_);
+---- ForwardBackward Matches (14 in 4 files) ----
+Net.hpp (include\caffe):  Dtype ForwardBackward() {
+Solver.cpp (src\caffe):      loss += net_->ForwardBackward();
+Test_net.cpp (src\caffe\test):  const Dtype loss = this->net_->ForwardBackward();
+Test_net.cpp (src\caffe\test):    const Dtype weighted_loss = this->net_->ForwardBackward();
+Test_net.cpp (src\caffe\test):  const Dtype loss = this->net_->ForwardBackward();
+Test_net.cpp (src\caffe\test):    const Dtype weighted_loss = this->net_->ForwardBackward();
+Test_net.cpp (src\caffe\test):  const Dtype loss = this->net_->ForwardBackward();
+Test_net.cpp (src\caffe\test):  const Dtype loss_main_2 = this->net_->ForwardBackward();
+Test_net.cpp (src\caffe\test):  const Dtype loss_main_3 = this->net_->ForwardBackward();
+Test_net.cpp (src\caffe\test):  const Dtype loss_midnet_2 = this->net_->ForwardBackward();
+Test_net.cpp (src\caffe\test):  const Dtype loss_midnet_3 = this->net_->ForwardBackward();
+Test_net.cpp (src\caffe\test):  this->net_->ForwardBackward();
+Test_net.cpp (src\caffe\test):  this->net_->ForwardBackward();
+Test_spp_layer.cpp (src\caffe\test):TYPED_TEST(SPPLayerTest, TestForwardBackward) {
