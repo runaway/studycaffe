@@ -63,19 +63,19 @@ class BaseConvolutionLayer : public Layer<Dtype> {
   virtual void compute_output_shape() = 0;
 
   /// @brief The spatial dimensions of a filter kernel.
-  Blob<int> kernel_shape_;
+  Blob<int> kernel_shape_; // kernel的形状 = [kernel_h, kernel_w]  
   /// @brief The spatial dimensions of the stride.
-  Blob<int> stride_;
+  Blob<int> stride_; // 步长形状 = [stride_h, stride_w]  
   /// @brief The spatial dimensions of the padding.
-  Blob<int> pad_;
+  Blob<int> pad_; // pad的形状 = [pad_h, pad_w]  
   /// @brief The spatial dimensions of the dilation.
   Blob<int> dilation_;
   /// @brief The spatial dimensions of the convolution input.
-  Blob<int> conv_input_shape_;
+  Blob<int> conv_input_shape_;  // 卷积的输入形状 = [输入图像通道数, 输入图像h,    输入图像w]  
   /// @brief The spatial dimensions of the col_buffer.
-  vector<int> col_buffer_shape_;
+  vector<int> col_buffer_shape_; // col_buffer的形状 = [kernel_dim_, conv_out_spatial_dim_ ]  
   /// @brief The spatial dimensions of the output.
-  vector<int> output_shape_;
+  vector<int> output_shape_; // 输出的形状 
   const vector<int>* bottom_shape_;
 
   int num_spatial_axes_;
