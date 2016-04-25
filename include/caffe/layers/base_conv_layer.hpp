@@ -78,9 +78,9 @@ class BaseConvolutionLayer : public Layer<Dtype> {
   vector<int> output_shape_; // 输出的形状 
   const vector<int>* bottom_shape_;
 
-  int num_spatial_axes_;
-  int bottom_dim_;
-  int top_dim_;
+  int num_spatial_axes_; // 空间轴个数  
+  int bottom_dim_; // 输入度维度 = 输入图像通道数 * 输入图像的h * 输入图像w  
+  int top_dim_; // 输出维度 = 输出通道数 * 输出h * 输出w  
 
   int channel_axis_;
   int num_;
