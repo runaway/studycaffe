@@ -82,16 +82,16 @@ class BaseConvolutionLayer : public Layer<Dtype> {
   int bottom_dim_; // 输入度维度 = 输入图像通道数 * 输入图像的h * 输入图像w  
   int top_dim_; // 输出维度 = 输出通道数 * 输出h * 输出w  
 
-  int channel_axis_;
+  int channel_axis_; // 输入图像的第几个轴是通道 
   int num_;
-  int channels_;
-  int group_;
-  int out_spatial_dim_;
-  int weight_offset_;
-  int num_output_;
-  bool bias_term_;
-  bool is_1x1_;
-  bool force_nd_im2col_;
+  int channels_; // 输入图像的通道数  
+  int group_; // 卷积组的大小 
+  int out_spatial_dim_; // 输出空间维度 = 卷积之后的图像长*卷积之后图像的宽  
+  int weight_offset_; // 使用卷积组用到的  
+  int num_output_; // 卷积后的图像的通道数  
+  bool bias_term_; // 是否启用偏置  
+  bool is_1x1_; // 是不是1x1卷积  
+  bool force_nd_im2col_; // 强制使用n维通用卷积  
 
  private:
   // wrap im2col/col2im so we don't have to remember the (long) argument lists
@@ -158,15 +158,15 @@ class BaseConvolutionLayer : public Layer<Dtype> {
 
   int num_kernels_im2col_;
   int num_kernels_col2im_;
-  int conv_out_channels_;
-  int conv_in_channels_;
-  int conv_out_spatial_dim_;
-  int kernel_dim_;
-  int col_offset_;
+  int conv_out_channels_; // 卷积的输出通道数, 在参数配置文件中设置  
+  int conv_in_channels_; // 卷积的输入通道数 （即输入图像的通道数） 
+  int conv_out_spatial_dim_; // 卷积的输出的空间维度 = 卷积后图像h*卷积后图像w  
+  int kernel_dim_; // 卷积核的维度 = 输入图像的维度*卷积核的h*卷积核的w  
+  int col_offset_; // 在使用gropu参数的时候使用的offset  
   int output_offset_;
 
-  Blob<Dtype> col_buffer_;
-  Blob<Dtype> bias_multiplier_;
+  Blob<Dtype> col_buffer_; // im2col的时候使用的存储空间  
+  Blob<Dtype> bias_multiplier_; // 将偏置扩展成矩阵的东东  
 };
 
 }  // namespace caffe

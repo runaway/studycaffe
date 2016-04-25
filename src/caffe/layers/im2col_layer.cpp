@@ -9,7 +9,7 @@ template <typename Dtype>
 void Im2colLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   ConvolutionParameter conv_param = this->layer_param_.convolution_param();
-  force_nd_im2col_ = conv_param.force_nd_im2col();
+  force_nd_im2col_ = conv_param.force_nd_im2col(); // 是否需要强制n维卷积
   const int input_num_dims = bottom[0]->shape().size();
   channel_axis_ = bottom[0]->CanonicalAxisIndex(conv_param.axis());
   const int first_spatial_dim = channel_axis_ + 1;
@@ -24,7 +24,7 @@ void Im2colLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
         << "kernel_h & kernel_w can only be used for 2D convolution.";
     CHECK_EQ(0, conv_param.kernel_size_size())
         << "Either kernel_size or kernel_h/w should be specified; not both.";
-    kernel_shape_data[0] = conv_param.kernel_h();
+    kernel_shape_data[0] = conv_param.kernel_h(); // 如果是正方形的那么 
     kernel_shape_data[1] = conv_param.kernel_w();
   } else {
     const int num_kernel_dims = conv_param.kernel_size_size();

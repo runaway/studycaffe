@@ -13,7 +13,7 @@ void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   // Configure the kernel size, padding, stride, and inputs.
   ConvolutionParameter conv_param = this->layer_param_.convolution_param();
-  force_nd_im2col_ = conv_param.force_nd_im2col();
+  force_nd_im2col_ = conv_param.force_nd_im2col(); // 是否需要强制n维卷积
   channel_axis_ = bottom[0]->CanonicalAxisIndex(conv_param.axis());
   const int first_spatial_axis = channel_axis_ + 1;
   const int num_axes = bottom[0]->num_axes();
@@ -126,8 +126,8 @@ void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
     conv_out_channels_ = channels_;
     conv_in_channels_ = num_output_;
   } else {
-    conv_out_channels_ = num_output_;
-    conv_in_channels_ = channels_;
+    conv_out_channels_ = num_output_; // 经过卷积之后的通道数 
+    conv_in_channels_ = channels_; // 输入的图像的通道数 
   }
   // Handle the parameters: weights and biases.
   // - blobs_[0] holds the filter weights
@@ -176,8 +176,8 @@ void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       bias_filler->Fill(this->blobs_[1].get());
     }
   }
-  kernel_dim_ = this->blobs_[0]->count(1);
-  weight_offset_ = conv_out_channels_ * kernel_dim_ / group_;
+  kernel_dim_ = this->blobs_[0]->count(1); // 一个kernel大小的图像块的维度是，输入图像的通道数乘以kernel的长度和宽度 
+  weight_offset_ = conv_out_channels_ * kernel_dim_ / group_; // 卷积进行分组的offset  
   // Propagate gradients to the parameters (as directed by backward pass).
   this->param_propagate_down_.resize(this->blobs_.size(), true);
 }
@@ -197,7 +197,7 @@ void BaseConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
         << "All inputs must have the same shape.";
   }
   // Shape the tops.
-  bottom_shape_ = &bottom[0]->shape();
+  bottom_shape_ = &bottom[0]->shape(); // 卷积层的输入的图像的形状,  batchsize x input image channel x input image height x input image width 
   compute_output_shape();
   vector<int> top_shape(bottom[0]->shape().begin(),
       bottom[0]->shape().begin() + channel_axis_);
@@ -209,7 +209,7 @@ void BaseConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
     top[top_id]->Reshape(top_shape);
   }
   if (reverse_dimensions()) {
-    conv_out_spatial_dim_ = bottom[0]->count(first_spatial_axis);
+    conv_out_spatial_dim_ = bottom[0]->count(first_spatial_axis); // 输出图像的长度和宽度  
   } else {
     conv_out_spatial_dim_ = top[0]->count(first_spatial_axis);
   }
