@@ -94,6 +94,7 @@ class BaseConvolutionLayer : public Layer<Dtype> {
   bool force_nd_im2col_; // 强制使用n维通用卷积  
 
  private:
+  // 而积累中又使用了conv_im2col_cpu将卷积核在图像上的滑动转换为了矩阵。这就是真身
   // wrap im2col/col2im so we don't have to remember the (long) argument lists
   inline void conv_im2col_cpu(const Dtype* data, Dtype* col_buff) {
     if (!force_nd_im2col_ && num_spatial_axes_ == 2) {

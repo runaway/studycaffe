@@ -273,7 +273,11 @@ void BaseConvolutionLayer<Dtype>::forward_cpu_gemm(const Dtype* input,
 
 template <typename Dtype>
 void BaseConvolutionLayer<Dtype>::forward_cpu_bias(Dtype* output,
-    const Dtype* bias) {
+    const Dtype* bias) 
+{
+  // output = bias * bias_multiplier_  
+  // num_output 与 conv_out_channel是一样的  
+  // num_output_ X out_spatial_dim_ = num_output_ X 1    1 X out_spatial_dim_ 
   caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_output_,
       out_spatial_dim_, 1, (Dtype)1., bias, bias_multiplier_.cpu_data(),
       (Dtype)1., output);
