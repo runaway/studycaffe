@@ -21,6 +21,7 @@ void ConvolutionLayer<Dtype>::compute_output_shape() {
   }
 }
 
+// 对每一张图进行卷积计算，然后存储。 先计算weight, 再计算bias
 template <typename Dtype>
 void ConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                                           const vector<Blob<Dtype>*>& top) 

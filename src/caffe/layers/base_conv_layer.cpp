@@ -253,6 +253,19 @@ void BaseConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
   }
 }
 
+// 计算forward_pass
+/*
+1.第一部分先将 input 变成一维具有（channel, height, weight）形式的array。在conv_im2col_cpu里实现， 
+2.第二部分做卷积，实际上是将3D的卷积变成2D的矩阵相乘。
+
+下面这个例子详细说明这个过程 
+其中
+
+kernel_dim=channel_in?kernel_width?kernel_height
+out_spatial=height_out?width_out
+这样做的出发点就是把3D运算变成2D运算, 对于weight, 把每一个小的卷积块平展成一个array, 所有的小卷积块变成矩阵。对应的，input image也要变成一个2维矩阵。实际上，就是对每一个output上的一点， 拿到在原图中得到这点的对应kernel的那些点，并flat它们。
+*/
+
 template <typename Dtype>
 void BaseConvolutionLayer<Dtype>::forward_cpu_gemm(const Dtype* input,
     const Dtype* weights, Dtype* output, bool skip_im2col) {
@@ -271,6 +284,7 @@ void BaseConvolutionLayer<Dtype>::forward_cpu_gemm(const Dtype* input,
   }
 }
 
+// 把计算卷积中的bias加上。
 template <typename Dtype>
 void BaseConvolutionLayer<Dtype>::forward_cpu_bias(Dtype* output,
     const Dtype* bias) 
