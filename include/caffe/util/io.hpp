@@ -48,105 +48,111 @@ inline void MakeTempFilename(string* temp_filename) {
   *temp_filename =
     (temp_files_subpath/caffe::format_int(next_temp_file++, 9)).string();
 }
-
-bool ReadProtoFromTextFile(const char* filename, Message* proto);
-
-inline bool ReadProtoFromTextFile(const string& filename, Message* proto) {
-  return ReadProtoFromTextFile(filename.c_str(), proto);
-}
-
-inline void ReadProtoFromTextFileOrDie(const char* filename, Message* proto) {
-  CHECK(ReadProtoFromTextFile(filename, proto));
-}
-
-inline void ReadProtoFromTextFileOrDie(const string& filename, Message* proto) {
-  ReadProtoFromTextFileOrDie(filename.c_str(), proto);
-}
-
-void WriteProtoToTextFile(const Message& proto, const char* filename);
-inline void WriteProtoToTextFile(const Message& proto, const string& filename) {
-  WriteProtoToTextFile(proto, filename.c_str());
-}
-
-bool ReadProtoFromBinaryFile(const char* filename, Message* proto);
-
-inline bool ReadProtoFromBinaryFile(const string& filename, Message* proto) {
-  return ReadProtoFromBinaryFile(filename.c_str(), proto);
-}
-
-inline void ReadProtoFromBinaryFileOrDie(const char* filename, Message* proto) {
-  CHECK(ReadProtoFromBinaryFile(filename, proto));
-}
-
-inline void ReadProtoFromBinaryFileOrDie(const string& filename,
-                                         Message* proto) {
-  ReadProtoFromBinaryFileOrDie(filename.c_str(), proto);
-}
-
-
-void WriteProtoToBinaryFile(const Message& proto, const char* filename);
-inline void WriteProtoToBinaryFile(
-    const Message& proto, const string& filename) {
-  WriteProtoToBinaryFile(proto, filename.c_str());
-}
-
-bool ReadFileToDatum(const string& filename, const int label, Datum* datum);
-
-inline bool ReadFileToDatum(const string& filename, Datum* datum) {
-  return ReadFileToDatum(filename, -1, datum);
-}
-
-bool ReadImageToDatum(const string& filename, const int label,
-    const int height, const int width, const bool is_color,
-    const std::string & encoding, Datum* datum);
-
-inline bool ReadImageToDatum(const string& filename, const int label,
-    const int height, const int width, const bool is_color, Datum* datum) {
-  return ReadImageToDatum(filename, label, height, width, is_color,
-                          "", datum);
-}
-
-inline bool ReadImageToDatum(const string& filename, const int label,
-    const int height, const int width, Datum* datum) {
-  return ReadImageToDatum(filename, label, height, width, true, datum);
-}
-
-inline bool ReadImageToDatum(const string& filename, const int label,
-    const bool is_color, Datum* datum) {
-  return ReadImageToDatum(filename, label, 0, 0, is_color, datum);
-}
-
-inline bool ReadImageToDatum(const string& filename, const int label,
-    Datum* datum) {
-  return ReadImageToDatum(filename, label, 0, 0, true, datum);
-}
-
-inline bool ReadImageToDatum(const string& filename, const int label,
-    const std::string & encoding, Datum* datum) {
-  return ReadImageToDatum(filename, label, 0, 0, true, encoding, datum);
-}
-
-bool DecodeDatumNative(Datum* datum);
-bool DecodeDatum(Datum* datum, bool is_color);
-
-#ifdef USE_OPENCV
-cv::Mat ReadImageToCVMat(const string& filename,
-    const int height, const int width, const bool is_color);
-
-cv::Mat ReadImageToCVMat(const string& filename,
-    const int height, const int width);
-
-cv::Mat ReadImageToCVMat(const string& filename,
-    const bool is_color);
-
-cv::Mat ReadImageToCVMat(const string& filename);
-
-cv::Mat DecodeDatumToCVMatNative(const Datum& datum);
-cv::Mat DecodeDatumToCVMat(const Datum& datum, bool is_color);
-
-void CVMatToDatum(const cv::Mat& cv_img, Datum* datum);
-#endif  // USE_OPENCV
-
-}  // namespace caffe
+// 从txt读取proto的定义  
+bool ReadProtoFromTextFile(const char* filename, Message* proto);  
+  
+// 从text读取proto的定义  
+inline bool ReadProtoFromTextFile(const string& filename, Message* proto) {  
+  return ReadProtoFromTextFile(filename.c_str(), proto);  
+}  
+// 从text读取proto的定义,只是增加了检查而已  
+inline void ReadProtoFromTextFileOrDie(const char* filename, Message* proto) {  
+  CHECK(ReadProtoFromTextFile(filename, proto));  
+}  
+// 从text读取proto的定义,只是增加了检查而已  
+inline void ReadProtoFromTextFileOrDie(const string& filename, Message* proto) {  
+  ReadProtoFromTextFileOrDie(filename.c_str(), proto);  
+}  
+// 将proto写入到txt文件  
+void WriteProtoToTextFile(const Message& proto, const char* filename);  
+inline void WriteProtoToTextFile(const Message& proto, const string& filename) {  
+  WriteProtoToTextFile(proto, filename.c_str());  
+}  
+// 从bin读取proto的定义  
+bool ReadProtoFromBinaryFile(const char* filename, Message* proto);  
+// 从bin读取proto的定义  
+inline bool ReadProtoFromBinaryFile(const string& filename, Message* proto) {  
+  return ReadProtoFromBinaryFile(filename.c_str(), proto);  
+}  
+// 从bin读取proto的定义,只是增加了检查而已  
+inline void ReadProtoFromBinaryFileOrDie(const char* filename, Message* proto) {  
+  CHECK(ReadProtoFromBinaryFile(filename, proto));  
+}  
+// 从bin读取proto的定义,只是增加了检查而已  
+inline void ReadProtoFromBinaryFileOrDie(const string& filename,  
+                                         Message* proto) {  
+  ReadProtoFromBinaryFileOrDie(filename.c_str(), proto);  
+}  
+  
+// 将proto写入到bin文件  
+void WriteProtoToBinaryFile(const Message& proto, const char* filename);  
+// 内联函数，将proto写入到bin文件  
+inline void WriteProtoToBinaryFile(  
+    const Message& proto, const string& filename) {  
+  WriteProtoToBinaryFile(proto, filename.c_str());  
+}  
+// 从文件读取数据到Datum  
+bool ReadFileToDatum(const string& filename, const int label, Datum* datum);  
+// 内联函数，从文件读取数据到Datum  
+inline bool ReadFileToDatum(const string& filename, Datum* datum) {  
+  return ReadFileToDatum(filename, -1, datum);  
+}  
+  
+// 从图像文件读取数据到Datum  
+bool ReadImageToDatum(const string& filename, const int label,  
+    const int height, const int width, const bool is_color,  
+    const std::string & encoding, Datum* datum);  
+// 内联函数，从图像文件（彩色还是黑白？）读取数据到Datum，指定图像大小  
+inline bool ReadImageToDatum(const string& filename, const int label,  
+    const int height, const int width, const bool is_color, Datum* datum) {  
+  return ReadImageToDatum(filename, label, height, width, is_color,  
+                          "", datum);  
+}  
+// 内联函数，从彩色图像文件读取数据到Datum，指定图像大小  
+inline bool ReadImageToDatum(const string& filename, const int label,  
+    const int height, const int width, Datum* datum) {  
+  return ReadImageToDatum(filename, label, height, width, true, datum);  
+}  
+// 内联函数，从图像文件（彩色还是黑白？）读取数据到Datum，自动获取图像大小  
+inline bool ReadImageToDatum(const string& filename, const int label,  
+    const bool is_color, Datum* datum) {  
+  return ReadImageToDatum(filename, label, 0, 0, is_color, datum);  
+}  
+// 内联函数，从彩色图像文件读取数据到Datum，自动获取图像大小  
+inline bool ReadImageToDatum(const string& filename, const int label,  
+    Datum* datum) {  
+  return ReadImageToDatum(filename, label, 0, 0, true, datum);  
+}  
+// 内联函数，从彩色图像文件读取数据到Datum，自动获取图像大小，指定编码格式  
+inline bool ReadImageToDatum(const string& filename, const int label,  
+    const std::string & encoding, Datum* datum) {  
+  return ReadImageToDatum(filename, label, 0, 0, true, encoding, datum);  
+}  
+// 对Datum进行解码  
+bool DecodeDatumNative(Datum* datum);  
+// 对彩色图像的Datum进行解码  
+bool DecodeDatum(Datum* datum, bool is_color);  
+  
+#ifdef USE_OPENCV  
+// 将图像读取到CVMat，指定图像大小，是否彩色  
+cv::Mat ReadImageToCVMat(const string& filename,  
+    const int height, const int width, const bool is_color);  
+// 将图像读取到CVMat，指定图像大小  
+cv::Mat ReadImageToCVMat(const string& filename,  
+    const int height, const int width);  
+// 将图像读取到CVMat，指定是否彩色  
+cv::Mat ReadImageToCVMat(const string& filename,  
+    const bool is_color);  
+// 将图像读取到CVMat  
+cv::Mat ReadImageToCVMat(const string& filename);  
+// 将Datum解码为为CVMat  
+cv::Mat DecodeDatumToCVMatNative(const Datum& datum);  
+// 将彩色图像的Datum解码为为CVMat  
+cv::Mat DecodeDatumToCVMat(const Datum& datum, bool is_color);  
+// 将CVMat转换为Datum  
+void CVMatToDatum(const cv::Mat& cv_img, Datum* datum);  
+#endif  // USE_OPENCV  
+  
+}  // namespace caffe  
 
 #endif   // CAFFE_UTIL_IO_H_

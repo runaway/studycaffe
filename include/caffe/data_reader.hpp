@@ -24,7 +24,7 @@ class DataReader {
  public:
   explicit DataReader(const LayerParameter& param);
   ~DataReader();
-
+  // 此外该类还涉及到另一个类BlockingQueue，该类位于/util/block_queue.hpp里
   inline BlockingQueue<Datum*>& free() const {
     return queue_pair_->free_;
   }
@@ -39,6 +39,7 @@ class DataReader {
     explicit QueuePair(int size);
     ~QueuePair();
 
+    // 定义了两个阻塞队列free_和full_
     BlockingQueue<Datum*> free_;
     BlockingQueue<Datum*> full_;
 

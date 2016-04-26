@@ -250,6 +250,7 @@ void caffe_rng_uniform(const int n, const Dtype a, const Dtype b, Dtype* r) {
   CHECK_GE(n, 0);
   CHECK(r);
   CHECK_LE(a, b);
+  // 调用Boost的库  
   boost::uniform_real<Dtype> random_distribution(a, caffe_nextafter<Dtype>(b));
   boost::variate_generator<caffe::rng_t*, boost::uniform_real<Dtype> >
       variate_generator(caffe_rng(), random_distribution);
@@ -265,13 +266,18 @@ void caffe_rng_uniform<float>(const int n, const float a, const float b,
 template
 void caffe_rng_uniform<double>(const int n, const double a, const double b,
                                double* r);
-
+/*
+因为Filler用到了关于随机数生成的一些方法，下面来看下math_function的相关实现：
+（1）高斯分布随机数的生成：
+CPU上的实现（直接调用Boost的库了）
+*/
 template <typename Dtype>
 void caffe_rng_gaussian(const int n, const Dtype a,
                         const Dtype sigma, Dtype* r) {
   CHECK_GE(n, 0);
   CHECK(r);
   CHECK_GT(sigma, 0);
+  // 直接调用boost中的正态分布了。
   boost::normal_distribution<Dtype> random_distribution(a, sigma);
   boost::variate_generator<caffe::rng_t*, boost::normal_distribution<Dtype> >
       variate_generator(caffe_rng(), random_distribution);
@@ -287,7 +293,7 @@ void caffe_rng_gaussian<float>(const int n, const float mu,
 template
 void caffe_rng_gaussian<double>(const int n, const double mu,
                                 const double sigma, double* r);
-
+// 伯努利分布（二项分布）随机数的生成（竟然没有GPU上的代码。。。）
 template <typename Dtype>
 void caffe_rng_bernoulli(const int n, const Dtype p, int* r) {
   CHECK_GE(n, 0);

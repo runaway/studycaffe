@@ -40,17 +40,25 @@ class Layer {
   explicit Layer(const LayerParameter& param)
     : layer_param_(param), is_shared_(false) {
       // Set phase and copy blobs (if there are any).
+      // 训练还是测试？phase  
       phase_ = param.phase();
       if (layer_param_.blobs_size() > 0) {
+        // 将blobs_的大小设置为参数中的大小  
         blobs_.resize(layer_param_.blobs_size());
         for (int i = 0; i < layer_param_.blobs_size(); ++i) {
+          // 新建若干个Blob  
           blobs_[i].reset(new Blob<Dtype>());
+
+          // 从blob文件中获取数据  
           blobs_[i]->FromProto(layer_param_.blobs(i));
         }
       }
     }
   virtual ~Layer() {}
 
+// SetUp设置层的互斥量、检查BLOB的参数、调用LayerSetUp进行初始化  
+// LayerSetUp是一个虚函数，用户可以去重载它。  
+// 然后再设置topblob的形状以及设置损失权重。 
   /**
    * @brief Implements common layer setup functionality.
    *
@@ -66,10 +74,15 @@ class Layer {
    */
   void SetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
+      // 初始化互斥量  
     InitMutex();
+      // 检查Blob 
     CheckBlobCounts(bottom, top);
+      // 层的初始化（虚函数，需用户去实现如何初始化层）  
     LayerSetUp(bottom, top);
+      // 改变top的形状（虚函数，需用户去实现如何根据bottomblob改变topblob的形状）  
     Reshape(bottom, top);
+       // 设置损失权重  
     SetLossWeights(top);
   }
 
@@ -100,12 +113,14 @@ class Layer {
    */
   virtual inline bool ShareInParallel() const { return false; }
 
+// 判断该层是否开启共享模式（即是否数据并行化了） 
   /** @brief Return whether this layer is actually shared by other nets.
    *         If ShareInParallel() is true and using more than one GPU and the
    *         net has TRAIN phase, then this function is expected return true.
    */
   inline bool IsShared() const { return is_shared_; }
 
+ // 设置是否共享 
   /** @brief Set whether this layer is actually shared by other nets
    *         If ShareInParallel() is true and using more than one GPU and the
    *         net has TRAIN phase, then is_shared should be set true.
@@ -131,6 +146,8 @@ class Layer {
   virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) = 0;
 
+// 前向传播函数  
+// 输入bottom，计算出top  
   /**
    * @brief Given the bottom blobs, compute the top blobs and the loss.
    *
@@ -151,6 +168,9 @@ class Layer {
   inline Dtype Forward(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
 
+ // 反向传播函数  
+ // 输入top和propagate_down  
+ // 输出bottom  
   /**
    * @brief Given the top blob error gradients, compute the bottom blob error
    *        gradients.
@@ -176,13 +196,14 @@ class Layer {
       const vector<bool>& propagate_down,
       const vector<Blob<Dtype>*>& bottom);
 
+// 返回blob指针的容器 
   /**
    * @brief Returns the vector of learnable parameter blobs.
    */
   vector<shared_ptr<Blob<Dtype> > >& blobs() {
     return blobs_;
   }
-
+// 返回层的参数  
   /**
    * @brief Returns the layer parameter.
    */
@@ -193,13 +214,15 @@ class Layer {
    */
   virtual void ToProto(LayerParameter* param, bool write_diff = false);
 
+ // 返回标量的损失（该损失与top blob相关联，给定索引就可获得该损失）
   /**
    * @brief Returns the scalar loss associated with a top blob at a given index.
    */
   inline Dtype loss(const int top_index) const {
     return (loss_.size() > top_index) ? loss_[top_index] : Dtype(0);
   }
-
+  
+// 给定索引，设置top blob相关联的损失  
   /**
    * @brief Sets the loss associated with a top blob at a given index.
    */
@@ -213,6 +236,7 @@ class Layer {
   /**
    * @brief Returns the layer type.
    */
+   // 虚函数，而且还是内联的，返回层类型  
   virtual inline const char* type() const { return ""; }
 
   /**
@@ -222,6 +246,7 @@ class Layer {
    * This method should be overridden to return a non-negative value if your
    * layer expects some exact number of bottom blobs.
    */
+   // 虚函数，获得bottom blob的精确个数 
   virtual inline int ExactNumBottomBlobs() const { return -1; }
   /**
    * @brief Returns the minimum number of bottom blobs required by the layer,
@@ -230,6 +255,7 @@ class Layer {
    * This method should be overridden to return a non-negative value if your
    * layer expects some minimum number of bottom blobs.
    */
+   // 虚函数，获得bottom blob的最小个数
   virtual inline int MinBottomBlobs() const { return -1; }
   /**
    * @brief Returns the maximum number of bottom blobs required by the layer,
@@ -238,6 +264,7 @@ class Layer {
    * This method should be overridden to return a non-negative value if your
    * layer expects some maximum number of bottom blobs.
    */
+   // 虚函数，获得bottom blob的最大个数  
   virtual inline int MaxBottomBlobs() const { return -1; }
   /**
    * @brief Returns the exact number of top blobs required by the layer,
@@ -246,6 +273,7 @@ class Layer {
    * This method should be overridden to return a non-negative value if your
    * layer expects some exact number of top blobs.
    */
+    // 虚函数，获得top blob的精确个数  
   virtual inline int ExactNumTopBlobs() const { return -1; }
   /**
    * @brief Returns the minimum number of top blobs required by the layer,
@@ -254,6 +282,7 @@ class Layer {
    * This method should be overridden to return a non-negative value if your
    * layer expects some minimum number of top blobs.
    */
+   // 虚函数，获得top blob的最小个数  
   virtual inline int MinTopBlobs() const { return -1; }
   /**
    * @brief Returns the maximum number of top blobs required by the layer,
@@ -262,6 +291,7 @@ class Layer {
    * This method should be overridden to return a non-negative value if your
    * layer expects some maximum number of top blobs.
    */
+   // 虚函数，获得top blob的最大个数  
   virtual inline int MaxTopBlobs() const { return -1; }
   /**
    * @brief Returns true if the layer requires an equal number of bottom and
@@ -270,6 +300,7 @@ class Layer {
    * This method should be overridden to return true if your layer expects an
    * equal number of bottom and top blobs.
    */
+   // 虚函数，bottom blob和top blob的个数是否一致  
   virtual inline bool EqualNumBottomTopBlobs() const { return false; }
 
   /**
@@ -280,6 +311,9 @@ class Layer {
    * blobs to fulfill the requirement specified by ExactNumTopBlobs() or
    * MinTopBlobs().
    */
+   // 返回当前层是否自动创建匿名top blobs  
+   // 如果返回true，表明网络初始化的时候创建了了足够多的匿名top blobs  
+   // 来满足ExactNumTopBlobs或者MinTopBlobs所要求的top blobs的个数  
   virtual inline bool AutoTopBlobs() const { return false; }
 
   /**
@@ -290,6 +324,7 @@ class Layer {
    * setting and backpropagate to blob i only if it needs gradient information
    * (as is done when force_backward == false).
    */
+   // 对于一个给定的bottom blob，返回是否允许强制反传 
   virtual inline bool AllowForceBackward(const int bottom_index) const {
     return true;
   }
@@ -318,22 +353,34 @@ class Layer {
 
 
  protected:
+    // 层的参数
   /** The protobuf that stores the layer parameters */
   LayerParameter layer_param_;
+
+    // 训练还是测试  
   /** The phase: TRAIN or TEST */
   Phase phase_;
+
+    // blobs_的是blob指针容器  
   /** The vector that stores the learnable parameters as a set of blobs. */
   vector<shared_ptr<Blob<Dtype> > > blobs_;
+
+    // 是否需要计算梯度，也即是否需要往下传播  
   /** Vector indicating whether to compute the diff of each param blob. */
   vector<bool> param_propagate_down_;
 
+// 每个top blob在目标函数中有非零的权重
   /** The vector that indicates whether each top blob has a non-zero weight in
    *  the objective function. */
   vector<Dtype> loss_;
 
+  // 纯虚函数，必须要实现前向的CPU计算，需要用户去实现全向传播CPU，也就是说必须要实现CPU的前向传播   
   /** @brief Using the CPU device, compute the layer output. */
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) = 0;
+  
+  // 虚函数，需要用户去实现全向传播GPU，如果实现GPU则运行GPU的代码  
+  // 如果没有实现则调用默认的CPU的代码 
   /**
    * @brief Using the GPU device, compute the layer output.
    *        Fall back to Forward_cpu() if unavailable.
@@ -344,6 +391,7 @@ class Layer {
     return Forward_cpu(bottom, top);
   }
 
+  // 纯虚函数，反传CPU ，必须要实现！！ 
   /**
    * @brief Using the CPU device, compute the gradients for any parameters and
    *        for the bottom blobs if propagate_down is true.
@@ -351,6 +399,8 @@ class Layer {
   virtual void Backward_cpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down,
       const vector<Blob<Dtype>*>& bottom) = 0;
+
+   // 虚函数，反传GPU，如果没有则用CPU的反传 
   /**
    * @brief Using the GPU device, compute the gradients for any parameters and
    *        for the bottom blobs if propagate_down is true.
@@ -366,8 +416,17 @@ class Layer {
   /**
    * Called by the parent Layer's SetUp to check that the number of bottom
    * and top Blobs provided as input match the expected numbers specified by
-   * the {ExactNum,Min,Max}{Bottom,Top}Blobs() functions.
-   */
+   * the {ExactNum,Min,Max}{Bottom,Top}Blobs() functions. */
+   // 该函数在SetUp中被调用  
+   // 检查Blob的一些参数是否正确  
+   // 比如:  
+   // 精确的底层blob数目  
+   // 最小的底层blob数目  
+   // 最大的底层blob数目  
+   // 精确的顶层blob数目  
+   // 最小的顶层blob数目  
+   // 最大的顶层blob数目  
+   // 此外还检查顶层和底层是否一致  
   virtual void CheckBlobCounts(const vector<Blob<Dtype>*>& bottom,
                                const vector<Blob<Dtype>*>& top) {
     if (ExactNumBottomBlobs() >= 0) {
@@ -407,6 +466,13 @@ class Layer {
     }
   }
 
+/*
+其中的一些函数的具体实现如下：
+主要就是前传和反传，前传调用对应的Forward_cpu或者Forward_gpu
+而我们知道Forward_cpu是纯虚函数，必须要实现而Forward_gpu是虚函数，如果不实现就调用 Forward_cpu函数了。
+前传（你必须实现自己的Forward_cpu，实现Forward_gpu是可选的）
+*/
+
   /**
    * Called by SetUp to initialize the weights associated with any top blobs in
    * the loss function. Store non-zero loss weights in the diff blob.
@@ -428,16 +494,23 @@ class Layer {
   }
 
  private:
+    // 判断该层是否被其他层所共享  
+// 这个内部变量实际是判断该层是不是数据层、数据层才可以被其他的网络共享
   /** Whether this layer is actually shared by other nets*/
   bool is_shared_;
 
+// 前向传播的时候所使用的互斥量的指针 
   /** The mutex for sequential forward if this layer is shared */
   shared_ptr<boost::mutex> forward_mutex_;
 
   /** Initialize forward_mutex_ */
   void InitMutex();
+
+  // 如果该层是共享的，则需要锁住互斥量  
   /** Lock forward_mutex_ if this layer is shared */
   void Lock();
+
+  // 如果该层是共享的，则需要解锁互斥量
   /** Unlock forward_mutex_ if this layer is shared */
   void Unlock();
 
@@ -447,36 +520,49 @@ class Layer {
 // Forward and backward wrappers. You should implement the cpu and
 // gpu specific implementations instead, and should not change these
 // functions.
-template <typename Dtype>
-inline Dtype Layer<Dtype>::Forward(const vector<Blob<Dtype>*>& bottom,
-    const vector<Blob<Dtype>*>& top) {
-  // Lock during forward to ensure sequential forward
-  Lock();
-  Dtype loss = 0;
-  Reshape(bottom, top);
-  switch (Caffe::mode()) {
-  case Caffe::CPU:
-    Forward_cpu(bottom, top);
-    for (int top_id = 0; top_id < top.size(); ++top_id) {
-      if (!this->loss(top_id)) { continue; }
-      const int count = top[top_id]->count();
-      const Dtype* data = top[top_id]->cpu_data();
-      const Dtype* loss_weights = top[top_id]->cpu_diff();
-      loss += caffe_cpu_dot(count, data, loss_weights);
-    }
-    break;
-  case Caffe::GPU:
-    Forward_gpu(bottom, top);
-#ifndef CPU_ONLY
-    for (int top_id = 0; top_id < top.size(); ++top_id) {
-      if (!this->loss(top_id)) { continue; }
-      const int count = top[top_id]->count();
-      const Dtype* data = top[top_id]->gpu_data();
-      const Dtype* loss_weights = top[top_id]->gpu_diff();
-      Dtype blob_loss = 0;
-      caffe_gpu_dot(count, data, loss_weights, &blob_loss);
-      loss += blob_loss;
-    }
+template <typename Dtype>  
+inline Dtype Layer<Dtype>::Forward(const vector<Blob<Dtype>*>& bottom,  
+    const vector<Blob<Dtype>*>& top) {  
+  // Lock during forward to ensure sequential forward  
+  // 前传的时候需要上锁，按照顺序执行才行，否则就乱了  
+  Lock();  
+  Dtype loss = 0;  
+  // 根据bottom设置top的形状  
+  Reshape(bottom, top);  
+  // 设置运行模式CPU or GPU  
+  switch (Caffe::mode()) {  
+  case Caffe::CPU:  
+    // 调用CPU的前传  
+    Forward_cpu(bottom, top);  
+    // 前传计算完之后计算损失（只有最后一层才进行计算，其余层都不用）  
+    for (int top_id = 0; top_id < top.size(); ++top_id) {  
+      if (!this->loss(top_id)) { continue; }  
+      const int count = top[top_id]->count();  
+      // 获取前传的数据  
+      const Dtype* data = top[top_id]->cpu_data();  
+      // 获取梯度（\frac{\partial Loss}{\partial net}）  
+      const Dtype* loss_weights = top[top_id]->cpu_diff();  
+      // data与loss_weight的点积，即得损失函数关于当前层权重的偏导了  
+    // \frac{\partial Loss}{\partial net} * \frac{\partial net}{\frac{W}}  
+    // = \frac{\partial Loss}{\partial W}  
+      loss += caffe_cpu_dot(count, data, loss_weights);  
+    }  
+    break;  
+  case Caffe::GPU:  
+    // GPU前传  
+    Forward_gpu(bottom, top);  
+#ifndef CPU_ONLY  
+    // 同上，只不过这里用GPU来计算点积了  
+    for (int top_id = 0; top_id < top.size(); ++top_id) {  
+      if (!this->loss(top_id)) { continue; }  
+      const int count = top[top_id]->count();  
+      // 获取GPU上的数据  
+      const Dtype* data = top[top_id]->gpu_data();  
+      const Dtype* loss_weights = top[top_id]->gpu_diff();  
+      Dtype blob_loss = 0;  
+      caffe_gpu_dot(count, data, loss_weights, &blob_loss);  
+      loss += blob_loss;  
+    }  
 #endif
     break;
   default:
@@ -486,22 +572,25 @@ inline Dtype Layer<Dtype>::Forward(const vector<Blob<Dtype>*>& bottom,
   return loss;
 }
 
+// 反传的道理与前传的道理很类似
+// 反传 ，必须实现CPU，但是GPU是可选的  
 template <typename Dtype>
 inline void Layer<Dtype>::Backward(const vector<Blob<Dtype>*>& top,
     const vector<bool>& propagate_down,
     const vector<Blob<Dtype>*>& bottom) {
-  switch (Caffe::mode()) {
-  case Caffe::CPU:
-    Backward_cpu(top, propagate_down, bottom);
-    break;
-  case Caffe::GPU:
-    Backward_gpu(top, propagate_down, bottom);
+  switch (Caffe::mode()) {  
+  case Caffe::CPU:// CPU反传  
+    Backward_cpu(top, propagate_down, bottom);  
+    break;  
+  case Caffe::GPU:// GPU反传  
+    Backward_gpu(top, propagate_down, bottom);  
     break;
   default:
     LOG(FATAL) << "Unknown caffe mode.";
   }
 }
 
+// 将LayerParameter转换为ProtoBuf 
 // Serialize LayerParameter to protocol buffer
 template <typename Dtype>
 void Layer<Dtype>::ToProto(LayerParameter* param, bool write_diff) {

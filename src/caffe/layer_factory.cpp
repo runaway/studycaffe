@@ -33,10 +33,13 @@
 
 namespace caffe {
 
+// 写一个获取卷积层实例的函数  
 // Get convolution layer according to engine.
 template <typename Dtype>
 shared_ptr<Layer<Dtype> > GetConvolutionLayer(
     const LayerParameter& param) {
+	   // 从参数中获取是使用什么引擎进行计算CUDNN还是CAFFE还是DEFAULT  
+   // engine可从caffe.proto中看出是枚举类型的  
   ConvolutionParameter conv_param = param.convolution_param();
   ConvolutionParameter_Engine engine = conv_param.engine();
 #ifdef USE_CUDNN
@@ -56,26 +59,29 @@ shared_ptr<Layer<Dtype> > GetConvolutionLayer(
 #endif
   }
   if (engine == ConvolutionParameter_Engine_CAFFE) {
+    //  直接初始化Caffe的卷积层  
     return shared_ptr<Layer<Dtype> >(new ConvolutionLayer<Dtype>(param));
 #ifdef USE_CUDNN
   } else if (engine == ConvolutionParameter_Engine_CUDNN) {
+      // 初始化CUDNN的卷积层  
     if (use_dilation) {
       LOG(FATAL) << "CuDNN doesn't support the dilated convolution at Layer "
                  << param.name();
     }
     return shared_ptr<Layer<Dtype> >(new CuDNNConvolutionLayer<Dtype>(param));
 #endif
-  } else {
-    LOG(FATAL) << "Layer " << param.name() << " has unknown engine.";
-  }
-}
-
-REGISTER_LAYER_CREATOR(Convolution, GetConvolutionLayer);
-
-// Get pooling layer according to engine.
-template <typename Dtype>
-shared_ptr<Layer<Dtype> > GetPoolingLayer(const LayerParameter& param) {
-  PoolingParameter_Engine engine = param.pooling_param().engine();
+  } else {// 否则就是出错了  
+    LOG(FATAL) << "Layer " << param.name() << " has unknown engine.";  
+  }  
+}  
+// 注册该卷积层，类型名为Convolution，获取卷积层的实例为GetConvolutionLayer函数  
+REGISTER_LAYER_CREATOR(Convolution, GetConvolutionLayer);  
+  
+// 获取池化层的实例，同卷积层的逻辑  
+// Get pooling layer according to engine.  
+template <typename Dtype>  
+shared_ptr<Layer<Dtype> > GetPoolingLayer(const LayerParameter& param) {  
+  PoolingParameter_Engine engine = param.pooling_param().engine();  
   if (engine == PoolingParameter_Engine_DEFAULT) {
     engine = PoolingParameter_Engine_CAFFE;
 #ifdef USE_CUDNN
@@ -107,8 +113,10 @@ shared_ptr<Layer<Dtype> > GetPoolingLayer(const LayerParameter& param) {
   }
 }
 
+// 注册池化层  
 REGISTER_LAYER_CREATOR(Pooling, GetPoolingLayer);
 
+// 注册ReLU层  
 // Get LRN layer according to engine
 template <typename Dtype>
 shared_ptr<Layer<Dtype> > GetLRNLayer(const LayerParameter& param) {
@@ -169,6 +177,7 @@ shared_ptr<Layer<Dtype> > GetReLULayer(const LayerParameter& param) {
 
 REGISTER_LAYER_CREATOR(ReLU, GetReLULayer);
 
+// 注册sigmoid层  
 // Get sigmoid layer according to engine.
 template <typename Dtype>
 shared_ptr<Layer<Dtype> > GetSigmoidLayer(const LayerParameter& param) {
@@ -192,6 +201,7 @@ shared_ptr<Layer<Dtype> > GetSigmoidLayer(const LayerParameter& param) {
 
 REGISTER_LAYER_CREATOR(Sigmoid, GetSigmoidLayer);
 
+// 注册softmax层  
 // Get softmax layer according to engine.
 template <typename Dtype>
 shared_ptr<Layer<Dtype> > GetSoftmaxLayer(const LayerParameter& param) {
@@ -215,6 +225,7 @@ shared_ptr<Layer<Dtype> > GetSoftmaxLayer(const LayerParameter& param) {
 
 REGISTER_LAYER_CREATOR(Softmax, GetSoftmaxLayer);
 
+// 注册tanh层  
 // Get tanh layer according to engine.
 template <typename Dtype>
 shared_ptr<Layer<Dtype> > GetTanHLayer(const LayerParameter& param) {
@@ -258,3 +269,5 @@ REGISTER_LAYER_CREATOR(Python, GetPythonLayer);
 // Layers that use their constructor as their default creator should be
 // registered in their corresponding cpp files. Do not register them here.
 }  // namespace caffe
+// 五、总结
+// 作者还真是煞费苦心，弄了个宏，一下子就注册了类。

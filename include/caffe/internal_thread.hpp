@@ -16,6 +16,7 @@ namespace caffe {
  * The child class will acquire the ability to run a single thread,
  * by reimplementing the virtual function InternalThreadEntry.
  */
+// InternalThread类实际上就是boost库的thread的封装
 class InternalThread {
  public:
   InternalThread() : thread_() {}
@@ -26,19 +27,24 @@ class InternalThread {
    * thread values, e.g. device id, solver index etc. The random seed
    * is initialized using caffe_rng_rand.
    */
+  // caffe的线程局部状态将会使用当前线程值来进行初始化，当前的线程的值有设备id，solver的编号、随机数种子等 
   void StartInternalThread();
 
   /** Will not return until the internal thread has exited. */
+  // 是否知道线程退出才返回 
   void StopInternalThread();
 
+  // 线程是否已经起来了
   bool is_started() const;
 
  protected:
   /* Implement this method in your subclass
       with the code you want your thread to run. */
+  // 定义了一个虚函数，要求继承该类的必须要实现之  
   virtual void InternalThreadEntry() {}
 
   /* Should be tested when running loops to exit when requested. */
+  // 在当请求退出的时候应该调用该函数 
   bool must_stop();
 
  private:

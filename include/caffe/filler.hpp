@@ -12,14 +12,19 @@
 #include "caffe/syncedmem.hpp"
 #include "caffe/util/math_functions.hpp"
 
+// Filler层的作用实际上就是根据proto中给出的参数对权重进行初始化，初始化的方式有很多种，分别为常量初始化（constant）、高斯分布初始化（gaussian）、positive_unitball初始化、均匀分布初始化（uniform）、xavier初始化、msra初始化、双线性初始化（bilinear）这么几种。
+
 namespace caffe {
 
 /// @brief Fills a Blob with constant or randomly-generated data.
 template <typename Dtype>
 class Filler {
  public:
+    // 构造函数  
   explicit Filler(const FillerParameter& param) : filler_param_(param) {}
+    // 析构函数，并且是虚函数  
   virtual ~Filler() {}
+    // 纯虚函数，继承的子类必须要实现  
   virtual void Fill(Blob<Dtype>* blob) = 0;
  protected:
   FillerParameter filler_param_;
@@ -33,11 +38,15 @@ class ConstantFiller : public Filler<Dtype> {
   explicit ConstantFiller(const FillerParameter& param)
       : Filler<Dtype>(param) {}
   virtual void Fill(Blob<Dtype>* blob) {
+    // 获取数据指针
     Dtype* data = blob->mutable_cpu_data();
+    // 获取数据长度  
     const int count = blob->count();
+     // 获取常量初始化的常数值  
     const Dtype value = this->filler_param_.value();
     CHECK(count);
     for (int i = 0; i < count; ++i) {
+        //对于每一个元素都初始化为常数值  
       data[i] = value;
     }
     CHECK_EQ(this->filler_param_.sparse(), -1)
@@ -52,9 +61,12 @@ class UniformFiller : public Filler<Dtype> {
   explicit UniformFiller(const FillerParameter& param)
       : Filler<Dtype>(param) {}
   virtual void Fill(Blob<Dtype>* blob) {
+    // 检查blob中的元素是否为0 
     CHECK(blob->count());
+    // 调用caffe_rng_uniform进行初始化  
     caffe_rng_uniform<Dtype>(blob->count(), Dtype(this->filler_param_.min()),
         Dtype(this->filler_param_.max()), blob->mutable_cpu_data());
+    // 均匀分布初始化是不支持稀疏特性的  
     CHECK_EQ(this->filler_param_.sparse(), -1)
          << "Sparsity not supported by this Filler.";
   }
@@ -69,22 +81,29 @@ class GaussianFiller : public Filler<Dtype> {
   virtual void Fill(Blob<Dtype>* blob) {
     Dtype* data = blob->mutable_cpu_data();
     CHECK(blob->count());
+    // 调用caffe_rng_gaussian初始化、其中输入了高斯分布的均值和方差  
     caffe_rng_gaussian<Dtype>(blob->count(), Dtype(this->filler_param_.mean()),
         Dtype(this->filler_param_.std()), blob->mutable_cpu_data());
     int sparse = this->filler_param_.sparse();
     CHECK_GE(sparse, -1);
     if (sparse >= 0) {
+        //  如果启用稀疏的话  
       // Sparse initialization is implemented for "weight" blobs; i.e. matrices.
       // These have num == channels == 1; width is number of inputs; height is
       // number of outputs.  The 'sparse' variable specifies the mean number
       // of non-zero input weights for a given output.
       CHECK_GE(blob->num_axes(), 1);
+        // 假设权重的形状是 输出单元个数 X输入单元个数  
       const int num_outputs = blob->shape(0);
+        // 不为0的概率 = 1/输出单元个数  
+      // 那么为0的概率= 1 - 1/输出单元个数  
       Dtype non_zero_probability = Dtype(sparse) / Dtype(num_outputs);
+        // 新建一个rand_vec，用户存放伯努利分布（二项分布）所生成的值  
       rand_vec_.reset(new SyncedMemory(blob->count() * sizeof(int)));
       int* mask = reinterpret_cast<int*>(rand_vec_->mutable_cpu_data());
       caffe_rng_bernoulli(blob->count(), non_zero_probability, mask);
       for (int i = 0; i < blob->count(); ++i) {
+        // 每一个数据元素都与生成的二项分布的样本值相乘  
         data[i] *= mask[i];
       }
     }
@@ -94,6 +113,8 @@ class GaussianFiller : public Filler<Dtype> {
   shared_ptr<SyncedMemory> rand_vec_;
 };
 
+// PositiveUnitballFiller首先用均匀分布填充W  
+// 然后将W中的元素按行求和，然后该行每一个的元素都除以该行的和  
 /** @brief Fills a Blob with values @f$ x \in [0, 1] @f$
  *         such that @f$ \forall i \sum_j x_{ij} = 1 @f$.
  */
@@ -104,18 +125,27 @@ class PositiveUnitballFiller : public Filler<Dtype> {
       : Filler<Dtype>(param) {}
   virtual void Fill(Blob<Dtype>* blob) {
     Dtype* data = blob->mutable_cpu_data();
-    DCHECK(blob->count());
+    DCHECK(blob->count()); // 我很奇怪为啥这里用DCHECK  
+
+        // 先填充均匀分布到权重 
     caffe_rng_uniform<Dtype>(blob->count(), 0, 1, blob->mutable_cpu_data());
+
+            // count / num = 输入的维度  
     // We expect the filler to not be called very frequently, so we will
     // just use a simple implementation
     int dim = blob->count() / blob->num();
+
+            // 检查输入维度是否小于0  
     CHECK(dim);
     for (int i = 0; i < blob->num(); ++i) {
+        // 遍历隐藏单元的个数（或者是输出单元的个数）  
       Dtype sum = 0;
       for (int j = 0; j < dim; ++j) {
+        //sum += data[i][j] 也就是说要按行求和  
         sum += data[i * dim + j];
       }
       for (int j = 0; j < dim; ++j) {
+        // 每一行都除以该行的和  
         data[i * dim + j] /= sum;
       }
     }
@@ -124,6 +154,11 @@ class PositiveUnitballFiller : public Filler<Dtype> {
   }
 };
 
+// 这里不明白的就是shape (num, a, b, c) where a * b * c = fan_in and num * b * c = fan_out  
+ // 扇入和扇出的定义了  
+// b*c=kernel size  
+// a是输入的channel  
+// num是输出的channel  
 /**
  * @brief Fills a Blob with values @f$ x \sim U(-a, +a) @f$ where @f$ a @f$ is
  *        set inversely proportional to number of incoming nodes, outgoing
@@ -153,11 +188,12 @@ class XavierFiller : public Filler<Dtype> {
     if (this->filler_param_.variance_norm() ==
         FillerParameter_VarianceNorm_AVERAGE) {
       n = (fan_in + fan_out) / Dtype(2);
-    } else if (this->filler_param_.variance_norm() ==
+    } else if (this->filler_param_.variance_norm() == // 如果参数里面定义了方差归一化则n = 扇入+扇出  
         FillerParameter_VarianceNorm_FAN_OUT) {
       n = fan_out;
     }
     Dtype scale = sqrt(Dtype(3) / n);
+    // 然后用[-scale,scale]的均匀分布初始化  
     caffe_rng_uniform<Dtype>(blob->count(), -scale, scale,
         blob->mutable_cpu_data());
     CHECK_EQ(this->filler_param_.sparse(), -1)
@@ -165,6 +201,7 @@ class XavierFiller : public Filler<Dtype> {
   }
 };
 
+// MSRAFiller初始化方式（用于卷积核）
 /**
  * @brief Fills a Blob with values @f$ x \sim N(0, \sigma^2) @f$ where
  *        @f$ \sigma^2 @f$ is set inversely proportional to number of incoming
@@ -199,6 +236,8 @@ class MSRAFiller : public Filler<Dtype> {
         FillerParameter_VarianceNorm_FAN_OUT) {
       n = fan_out;
     }
+
+    // 标准差是\sqrt{\frac{2}{n}}  
     Dtype std = sqrt(Dtype(2) / n);
     caffe_rng_gaussian<Dtype>(blob->count(), Dtype(0), std,
         blob->mutable_cpu_data());
@@ -207,6 +246,9 @@ class MSRAFiller : public Filler<Dtype> {
   }
 };
 
+
+// BilinearFiller初始化（用户反卷积核）
+// 反卷积所用的初始化，不支持稀疏特性
 /*!
 @brief Fills a Blob with coefficients for bilinear interpolation.
 
@@ -249,10 +291,13 @@ class BilinearFiller : public Filler<Dtype> {
     CHECK_EQ(blob->num_axes(), 4) << "Blob must be 4 dim.";
     CHECK_EQ(blob->width(), blob->height()) << "Filter must be square";
     Dtype* data = blob->mutable_cpu_data();
+    // f是宽度除以2  
     int f = ceil(blob->width() / 2.);
     float c = (2 * f - 1 - f % 2) / (2. * f);
     for (int i = 0; i < blob->count(); ++i) {
+        // x表示列的索引  
       float x = i % blob->width();
+        // 行的索引%宽度  
       float y = (i / blob->width()) % blob->height();
       data[i] = (1 - fabs(x / f - c)) * (1 - fabs(y / f - c));
     }
@@ -261,6 +306,7 @@ class BilinearFiller : public Filler<Dtype> {
   }
 };
 
+// 根据给定的参数获取对应的Filler，由该段代码可以看出proto文件里面对于权重可以有哪些指定的初始化方式。
 /**
  * @brief Get a specific filler from the specification given in FillerParameter.
  *
@@ -292,4 +338,5 @@ Filler<Dtype>* GetFiller(const FillerParameter& param) {
 
 }  // namespace caffe
 
+// 主要介绍了Filler中初始化权重各个算法的具体的实现，具体原理可以参考相关的论文。关于Filler其实没啥可以深挖的。已经被挖得差不多了。
 #endif  // CAFFE_FILLER_HPP_
