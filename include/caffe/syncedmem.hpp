@@ -53,23 +53,31 @@ class SyncedMemory {
         own_cpu_data_(false), cpu_malloc_use_cuda_(false), own_gpu_data_(false),
         gpu_device_(-1) {}
   ~SyncedMemory();
-  const void* cpu_data();
-  void set_cpu_data(void* data);
-  const void* gpu_data();
-  void set_gpu_data(void* data);
-  void* mutable_cpu_data();
-  void* mutable_gpu_data();
-  enum SyncedHead { UNINITIALIZED, HEAD_AT_CPU, HEAD_AT_GPU, SYNCED };
-  SyncedHead head() { return head_; }
-  size_t size() { return size_; }
-
-#ifndef CPU_ONLY
-  void async_gpu_push(const cudaStream_t& stream);
-#endif
-
- private:
-  void to_cpu();
-  void to_gpu();
+// 获取CPUDATA  
+  const void* cpu_data();  
+  // 设置CPUDATA  
+  void set_cpu_data(void* data);  
+  // 获取GPUDATA  
+  const void* gpu_data();  
+  // 设置GPUDATA  
+  void set_gpu_data(void* data);  
+  // 获取互斥的CPU或者GPUDATA  
+  void* mutable_cpu_data();  
+  void* mutable_gpu_data();  
+  // 枚举类型，未初始化，在CPU、在GPU、同步状态  
+  enum SyncedHead { UNINITIALIZED, HEAD_AT_CPU, HEAD_AT_GPU, SYNCED };  
+  // 获取数据的位置  
+  SyncedHead head() { return head_; }  
+  // 数据大小  
+  size_t size() { return size_; }  
+#ifndef CPU_ONLY  
+  void async_gpu_push(const cudaStream_t& stream);  
+#endif  
+  
+ private:  
+ // 内部使用的到cpu还是gpu  
+  void to_cpu();  
+  void to_gpu();  
   void* cpu_ptr_;
   void* gpu_ptr_;
   size_t size_;

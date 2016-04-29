@@ -272,11 +272,25 @@ void BaseConvolutionLayer<Dtype>::forward_cpu_gemm(const Dtype* input,
   const Dtype* col_buff = input;
   if (!is_1x1_) {
     if (!skip_im2col) {
+              // 如果没有1x1卷积，也没有skip_im2col  
+      // 则使用conv_im2col_cpu对使用卷积核滑动过程中的每一个kernel大小的图像块  
+      // 变成一个列向量，形成一个height=kernel_dim_的  
+      // width = 卷积后图像heght*卷积后图像width  
       conv_im2col_cpu(input, col_buffer_.mutable_cpu_data());
     }
     col_buff = col_buffer_.cpu_data();
   }
+
+  // 使用caffe的cpu_gemm来进行计算 
   for (int g = 0; g < group_; ++g) {
+            // 分组分别进行计算  
+      // conv_out_channels_ / group_是每个卷积组的输出的channel  
+      // kernel_dim_ = input channels per-group x kernel height x kernel width  
+      // 计算的是output[output_offset_ * g] =  
+      // weights[weight_offset_ * g] X col_buff[col_offset_ * g]  
+      // weights的形状是 [conv_out_channel x kernel_dim_]  
+      // col_buff的形状是[kernel_dim_ x (卷积后图像高度乘以卷积后图像宽度)]  
+      // 所以output的形状自然就是conv_out_channel X (卷积后图像高度乘以卷积后图像宽度)  
     caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, conv_out_channels_ /
         group_, conv_out_spatial_dim_, kernel_dim_,
         (Dtype)1., weights + weight_offset_ * g, col_buff + col_offset_ * g,

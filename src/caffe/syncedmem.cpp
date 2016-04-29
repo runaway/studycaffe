@@ -3,27 +3,35 @@
 #include "caffe/util/math_functions.hpp"
 
 namespace caffe {
-
-SyncedMemory::~SyncedMemory() {
-  if (cpu_ptr_ && own_cpu_data_) {
-    CaffeFreeHost(cpu_ptr_, cpu_malloc_use_cuda_);
-  }
-
-#ifndef CPU_ONLY
-  if (gpu_ptr_ && own_gpu_data_) {
-    int initial_device;
-    cudaGetDevice(&initial_device);
-    if (gpu_device_ != -1) {
-      CUDA_CHECK(cudaSetDevice(gpu_device_));
-    }
-    CUDA_CHECK(cudaFree(gpu_ptr_));
-    cudaSetDevice(initial_device);
-  }
-#endif  // CPU_ONLY
-}
-
-inline void SyncedMemory::to_cpu() {
-  switch (head_) {
+// 析构函数就是释放内存  
+SyncedMemory::~SyncedMemory() {  
+  if (cpu_ptr_ && own_cpu_data_) {  
+    CaffeFreeHost(cpu_ptr_);  
+  }  
+  
+#ifndef CPU_ONLY// 只要不是定义的CPU_ONLY的编译模式  
+  if (gpu_ptr_ && own_gpu_data_) {  
+    int initial_device;  
+    // 获取可用设备  
+    cudaGetDevice(&initial_device);  
+    if (gpu_device_ != -1) {  
+        // 当前所使用的设备  
+      CUDA_CHECK(cudaSetDevice(gpu_device_));  
+    }  
+    // 释放当前  
+    CUDA_CHECK(cudaFree(gpu_ptr_));  
+    cudaSetDevice(initial_device);  
+  }  
+#endif  // CPU_ONLY  
+}  
+  
+// 内部使用的  
+// 如果当前未初始化，直接在内存分配空间  
+// 如果在GPU上则复制到内存  
+// 如果已经在内存则啥都不动  
+inline void SyncedMemory::to_cpu() {  
+  switch (head_) {  
+  // 如果当前是未初始化，直接分配CPU上的内存  
   case UNINITIALIZED:
     CaffeMallocHost(&cpu_ptr_, size_, &cpu_malloc_use_cuda_);
     caffe_memset(size_, 0, cpu_ptr_);
@@ -32,14 +40,17 @@ inline void SyncedMemory::to_cpu() {
     break;
   case HEAD_AT_GPU:
 #ifndef CPU_ONLY
-    if (cpu_ptr_ == NULL) {
+    // 如果当前数据在GPU，然后cpu_ptr为空  
+    if (cpu_ptr_ == NULL) {  
+        // 分配内存  
       CaffeMallocHost(&cpu_ptr_, size_, &cpu_malloc_use_cuda_);
       own_cpu_data_ = true;
     }
-    caffe_gpu_memcpy(size_, gpu_ptr_, cpu_ptr_);
-    head_ = SYNCED;
-#else
-    NO_GPU;
+    // 复制数据  
+    caffe_gpu_memcpy(size_, gpu_ptr_, cpu_ptr_);  
+    head_ = SYNCED;  
+#else// CPU_ONLY模式当然只能报错了  
+    NO_GPU;  
 #endif
     break;
   case HEAD_AT_CPU:
@@ -48,39 +59,52 @@ inline void SyncedMemory::to_cpu() {
   }
 }
 
-inline void SyncedMemory::to_gpu() {
-#ifndef CPU_ONLY
-  switch (head_) {
-  case UNINITIALIZED:
-    CUDA_CHECK(cudaGetDevice(&gpu_device_));
-    CUDA_CHECK(cudaMalloc(&gpu_ptr_, size_));
-    caffe_gpu_memset(size_, 0, gpu_ptr_);
-    head_ = HEAD_AT_GPU;
-    own_gpu_data_ = true;
-    break;
-  case HEAD_AT_CPU:
-    if (gpu_ptr_ == NULL) {
-      CUDA_CHECK(cudaGetDevice(&gpu_device_));
-      CUDA_CHECK(cudaMalloc(&gpu_ptr_, size_));
-      own_gpu_data_ = true;
-    }
-    caffe_gpu_memcpy(size_, cpu_ptr_, gpu_ptr_);
-    head_ = SYNCED;
-    break;
-  case HEAD_AT_GPU:
-  case SYNCED:
-    break;
-  }
-#else
-  NO_GPU;
-#endif
-}
-
-const void* SyncedMemory::cpu_data() {
-  to_cpu();
-  return (const void*)cpu_ptr_;
-}
-
+// 内部使用的  
+// 如果当前未初始化直接在GPU分配内存  
+// 如果当前在CPU，则在GPU上分配内存并且复制到GPU  
+// 如果数据已经在GPU则啥也不做  
+inline void SyncedMemory::to_gpu() {  
+#ifndef CPU_ONLY  
+  switch (head_) {  
+  case UNINITIALIZED:  
+    // 获取设备  
+    CUDA_CHECK(cudaGetDevice(&gpu_device_));  
+    // 在设备上分配内存  
+    CUDA_CHECK(cudaMalloc(&gpu_ptr_, size_));  
+    // 初始化为0  
+    caffe_gpu_memset(size_, 0, gpu_ptr_);  
+    head_ = HEAD_AT_GPU;  
+    own_gpu_data_ = true;  
+    break;  
+  case HEAD_AT_CPU:  
+    if (gpu_ptr_ == NULL) {  
+      CUDA_CHECK(cudaGetDevice(&gpu_device_));  
+      CUDA_CHECK(cudaMalloc(&gpu_ptr_, size_));  
+      own_gpu_data_ = true;  
+    }  
+    caffe_gpu_memcpy(size_, cpu_ptr_, gpu_ptr_);  
+    head_ = SYNCED;  
+    break;  
+  case HEAD_AT_GPU:  
+  case SYNCED:  
+    break;  
+  }  
+#else  
+  NO_GPU;  
+#endif  
+}  
+  
+// 首先不管三七二十一将数据搞到内存上去  
+// 然后获取cpu上的数据  
+const void* SyncedMemory::cpu_data() {  
+  to_cpu();  
+  return (const void*)cpu_ptr_;  
+}  
+  
+  
+// 如果当前cpu_ptr_有内存上的数据则先释放  
+// 然后再将地址给内部变量cpu_ptr_  
+// 设置cpu上的数据  
 void SyncedMemory::set_cpu_data(void* data) {
   CHECK(data);
   if (own_cpu_data_) {
@@ -91,8 +115,11 @@ void SyncedMemory::set_cpu_data(void* data) {
   own_cpu_data_ = false;
 }
 
-const void* SyncedMemory::gpu_data() {
-#ifndef CPU_ONLY
+// 首先不管三七二十一将数据搞到GPU上去  
+// 然后在获取gpu上的数据  
+// 但是并没有改变head_的值(head_表明数据究竟在哪儿)  
+const void* SyncedMemory::gpu_data() {  
+#ifndef CPU_ONLY  
   to_gpu();
   return (const void*)gpu_ptr_;
 #else
@@ -101,8 +128,11 @@ const void* SyncedMemory::gpu_data() {
 #endif
 }
 
-void SyncedMemory::set_gpu_data(void* data) {
-#ifndef CPU_ONLY
+// 如果当前gpu_ptr_有内存上的数据则先释放  
+// 然后再将地址给内部变量gpu_ptr_  
+// 设置gpu上的数据  
+void SyncedMemory::set_gpu_data(void* data) {  
+#ifndef CPU_ONLY  
   CHECK(data);
   if (own_gpu_data_) {
     int initial_device;
@@ -121,30 +151,37 @@ void SyncedMemory::set_gpu_data(void* data) {
 #endif
 }
 
-void* SyncedMemory::mutable_cpu_data() {
-  to_cpu();
-  head_ = HEAD_AT_CPU;
-  return cpu_ptr_;
-}
-
-void* SyncedMemory::mutable_gpu_data() {
-#ifndef CPU_ONLY
-  to_gpu();
-  head_ = HEAD_AT_GPU;
-  return gpu_ptr_;
-#else
-  NO_GPU;
-  return NULL;
-#endif
-}
-
-#ifndef CPU_ONLY
-void SyncedMemory::async_gpu_push(const cudaStream_t& stream) {
-  CHECK(head_ == HEAD_AT_CPU);
-  if (gpu_ptr_ == NULL) {
-    CUDA_CHECK(cudaGetDevice(&gpu_device_));
-    CUDA_CHECK(cudaMalloc(&gpu_ptr_, size_));
-    own_gpu_data_ = true;
+// 首先不管三七二十一先数据搞到CPU上去  
+// 然后返回互斥的cpu_ptr_指针  
+// mutable_cpu_data与cpu_data的区别就是是否设置head  
+void* SyncedMemory::mutable_cpu_data() {  
+  to_cpu();  
+  head_ = HEAD_AT_CPU;  
+  return cpu_ptr_;  
+}  
+  
+  
+// 首先不管三七二十一先数据搞到GPU上去  
+// 然后返回互斥的gpu_ptr_指针  
+// mutable_gpu_data与gpu_data的区别就是是否设置head  
+void* SyncedMemory::mutable_gpu_data() {  
+#ifndef CPU_ONLY  
+  to_gpu();  
+  head_ = HEAD_AT_GPU;  
+  return gpu_ptr_;  
+#else  
+  NO_GPU;  
+#endif  
+}  
+  
+#ifndef CPU_ONLY  
+// 异步推送数据到gpu  
+void SyncedMemory::async_gpu_push(const cudaStream_t& stream) {  
+  CHECK(head_ == HEAD_AT_CPU);  
+  if (gpu_ptr_ == NULL) {  
+    CUDA_CHECK(cudaGetDevice(&gpu_device_));  
+    CUDA_CHECK(cudaMalloc(&gpu_ptr_, size_));  
+    own_gpu_data_ = true;  
   }
   const cudaMemcpyKind put = cudaMemcpyHostToDevice;
   CUDA_CHECK(cudaMemcpyAsync(gpu_ptr_, cpu_ptr_, size_, put, stream));

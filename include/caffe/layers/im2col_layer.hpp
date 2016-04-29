@@ -40,22 +40,37 @@ class Im2colLayer : public Layer<Dtype> {
   virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
-  /// @brief The spatial dimensions of a filter kernel.
-  Blob<int> kernel_shape_;
-  /// @brief The spatial dimensions of the stride.
-  Blob<int> stride_;
-  /// @brief The spatial dimensions of the padding.
+/// @brief The spatial dimensions of a filter kernel.  
+  // kernel的形状 = [kernel_h, kernel_w]  
+  Blob<int> kernel_shape_;  
+  
+  /// @brief The spatial dimensions of the stride.  
+  // 步长形状 = [stride_h, stride_w]  
+  Blob<int> stride_;  
+  
+  /// @brief The spatial dimensions of the padding.  
+  // pad的形状 = [pad_h, pad_w]  
   Blob<int> pad_;
   /// @brief The spatial dimensions of the dilation.
   Blob<int> dilation_;
 
-  int num_spatial_axes_;
-  int bottom_dim_;
-  int top_dim_;
-
-  int channel_axis_;
-  int num_;
-  int channels_;
+  // 空间轴个数  
+  int num_spatial_axes_;  
+  
+  // 输入度维度 = 输入图像通道数*输入图像的h*输入图像w  
+  int bottom_dim_;  
+  
+  // 输出维度 = 输出通道数*输出h*输出w  
+  int top_dim_;  
+  
+  // 输入图像的第几个轴是通道  
+  int channel_axis_;  
+  
+  // batchsize  
+  int num_;  
+  
+  // 输入图像的通道数  
+  int channels_;  
 
   bool force_nd_im2col_;
 };
