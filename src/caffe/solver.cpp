@@ -25,6 +25,8 @@ SolverAction::Enum Solver<Dtype>::GetRequestedAction() {
   return SolverAction::NONE;
 }
 
+// 初始化两个Net类，net_和test_net_，并调用Init()函数 
+// 输入：SolverParameter类型的param
 template <typename Dtype>
 Solver<Dtype>::Solver(const SolverParameter& param, const Solver* root_solver)
     : net_(), callbacks_(), root_solver_(root_solver),
@@ -32,6 +34,8 @@ Solver<Dtype>::Solver(const SolverParameter& param, const Solver* root_solver)
   Init(param);
 }
 
+// 初始化两个Net类，net_和test_net_，并调用Init()函数 
+// 输入：string类型的param_file 
 template <typename Dtype>
 Solver<Dtype>::Solver(const string& param_file, const Solver* root_solver)
     : net_(), callbacks_(), root_solver_(root_solver),
