@@ -45,6 +45,9 @@ Solver<Dtype>::Solver(const string& param_file, const Solver* root_solver)
   Init(param);
 }
 
+// 初始化网络 
+// 输入：SolverParameter类型的param 
+// 输出：无
 template <typename Dtype>
 void Solver<Dtype>::Init(const SolverParameter& param) {
   CHECK(Caffe::root_solver() || root_solver_)
@@ -54,11 +57,18 @@ void Solver<Dtype>::Init(const SolverParameter& param) {
   param_ = param;
   CHECK_GE(param_.average_loss(), 1) << "average_loss should be non-negative.";
   CheckSnapshotWritePermissions();
+
+  // 1. 设置随机数种子 
   if (Caffe::root_solver() && param_.random_seed() >= 0) {
     Caffe::set_random_seed(param_.random_seed());
   }
+
+  // 2. 申请一块Net空间以下面的构造函数进行初始化 
+  // param_file=train_net_，net_指向这块空间 
   // Scaffolding code
   InitTrainNet();
+
+  // 如果有test_net，则申请一块Net空间，test_net_指向这块空间 
   if (Caffe::root_solver()) {
     InitTestNets();
     LOG(INFO) << "Solver scaffolding done.";
@@ -202,6 +212,7 @@ void Solver<Dtype>::Step(int iters) {
   losses_.clear();
   smoothed_loss_ = 0;
 
+  // 对于每一次训练时的迭代(遍历整个网络)
   while (iter_ < stop_iter) {
     // zero-init the params
     net_->ClearParamDiffs();
@@ -222,6 +233,8 @@ void Solver<Dtype>::Step(int iters) {
     net_->set_debug_info(display && param_.debug_info());
     // accumulate the loss and gradient
     Dtype loss = 0;
+
+    // 计算loss：loss = net_->ForwardBackward(bottom_vec)其中：
     for (int i = 0; i < param_.iter_size(); ++i) {
       loss += net_->ForwardBackward();
     }
@@ -277,6 +290,7 @@ void Solver<Dtype>::Step(int iters) {
   }
 }
 
+// 功能：训练网络 
 template <typename Dtype>
 void Solver<Dtype>::Solve(const char* resume_file) {
   CHECK(Caffe::root_solver());

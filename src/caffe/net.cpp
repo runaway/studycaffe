@@ -543,6 +543,8 @@ Dtype Net<Dtype>::ForwardFromTo(int start, int end) {
     loss += layer_loss;
     if (debug_info_) { ForwardDebugInfo(i); }
   }
+
+  // 对于非loss层都会返回0
   return loss;
 }
 
