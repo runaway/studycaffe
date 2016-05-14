@@ -482,6 +482,7 @@ void Solver<Dtype>::Test(const int test_net_id)
     // ⑥ 设置当前阶段（TRAIN还是TEST/TRAIN）
 }
 
+// 输出当前网络状态到一个文件中，不重要
 template <typename Dtype>
 void Solver<Dtype>::Snapshot() {
   CHECK(Caffe::root_solver());
@@ -541,7 +542,7 @@ string Solver<Dtype>::SnapshotToHDF5() {
   net_->ToHDF5(model_filename, param_.snapshot_diff());
   return model_filename;
 }
-
+// 从一个文件中读入网络状态，并可以从那个状态恢复，不重要 
 template <typename Dtype>
 void Solver<Dtype>::Restore(const char* state_file) {
   CHECK(Caffe::root_solver());

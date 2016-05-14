@@ -7,7 +7,15 @@
 #include "caffe/util/upgrade_proto.hpp"
 
 namespace caffe {
-
+/*
+功能：得到学习率 
+步骤： 
+1. 得到学习率类型 const string& lr_policy = this->param_.lr_policy() 
+2. 判断学习率类型（注释有介绍） 
+3. 返回学习率 
+输入：无 
+输出：Dtype类型的rate
+*/
 // Return the current learning rate. The currently implemented learning rate
 // policies are as follows:
 //    - fixed: always return base_lr.
@@ -62,6 +70,16 @@ Dtype SGDSolver<Dtype>::GetLearningRate() {
   return rate;
 }
 
+/*
+功能：提前训练 
+步骤： 
+1. 将训练网络net_的参数读到net_params net_params = this->net_->params() 
+其中params_是一个存blob指针的vector 
+2. 清空历史残留值 
+3. 向history压入与网络的每一层blob相同大小的空间 
+输入：无 
+输出：无
+*/
 template <typename Dtype>
 void SGDSolver<Dtype>::PreSolve() {
   // Initialize the history
@@ -208,6 +226,47 @@ template <typename Dtype>
 void sgd_update_gpu(int N, Dtype* g, Dtype* h, Dtype momentum,
     Dtype local_rate);
 #endif
+
+/*
+功能：用随机梯度下降法计算更新值 
+输入：无 
+输出：无 
+步骤： 
+1. (所有的)读取网络参数net_params，网络学习速率 net_params_lr， 
+权值衰减net_params_weight_decay 读取学习速率rate 
+2. (当前层)读取动量，权值衰减 
+3. 如果是CPU： 
+对于每一次层：
+
+计算local_rate，local_decay
+调用caffe_cpu_axpby，caffe_axpy，caffe_copy函数：
+caffe_cpu_axpby(net_params[param_id]->count(), local_rate,              net_params[param_id]->cpu_diff(), momentum, history_[param_id]->mutable_cpu_data());
+
+caffe_axpy(net_params[param_id]->count(), local_decay*local_rate,  net_params[param_id]->cpu_data(),history_[param_id]->mutable_cpu_data());
+
+void caffe_cpu_axpby<float>(const int N, const float alpha, const float* X,const float beta, float* Y)
+{
+  cblas_saxpby(N, alpha, X, 1, beta, Y, 1);
+}
+其中:
+inline void cblas_saxpby(const int N, const float alpha, const float* X,const int incX, const float beta, float* Y, const int incY)
+{
+  cblas_sscal(N, beta, Y, incY);
+  cblas_saxpy(N, alpha, X, incX, Y, incY);
+}
+
+
+caffe_cpu_axpby调用了cblas_saxpby，即调用了cblas_sscal和cblas_saxpy
+
+void caffe_axpy<float>(const int N, const float alpha, const float* X,float* Y)
+{
+  cblas_saxpy(N, alpha, X, 1, Y, 1);
+}
+
+caffe_axpy调用了cblas_saxpy，即调用了cblas_saxpy 
+所以caffe_cpu_axpby比caffe_axpy多输入了一个beta参数，多调用了cblas_sscal(N, beta, Y, incY); 
+4. GPU同理
+*/
 
 template <typename Dtype>
 void SGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) {
