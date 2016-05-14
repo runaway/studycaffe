@@ -35,6 +35,7 @@ void InsertSplits(const NetParameter& param, NetParameter* param_split) {
       ++top_idx_to_bottom_count[top_idx];
     }
     for (int j = 0; j < layer_param.top_size(); ++j) {
+        // layer_param.top(j)存的是第j个输出blob的名字
       const string& blob_name = layer_param.top(j);
       blob_name_to_last_top_idx[blob_name] = make_pair(i, j);
     }

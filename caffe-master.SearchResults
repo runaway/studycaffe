@@ -1,2 +1,2 @@
----- loss += layer_loss Matches (1 in 1 files) ----
-Net.cpp (src\caffe):    loss += layer_loss;
+---- top_id_vecs_[i] Matches (1 in 1 files) ----
+Net.hpp (include\caffe):    return top_id_vecs_[i];

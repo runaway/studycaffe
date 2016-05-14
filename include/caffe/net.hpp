@@ -153,6 +153,8 @@ class Net {
   inline const vector<int> & top_ids(int i) const {
     CHECK_GE(i, 0) << "Invalid layer id";
     CHECK_LT(i, top_id_vecs_.size()) << "Invalid layer id";
+
+    // µ±Ç°blobµÄid
     return top_id_vecs_[i];
   }
   /// @brief returns the ids of the bottom blobs of layer i
