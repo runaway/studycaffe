@@ -256,7 +256,8 @@ class Blob {
   Dtype* mutable_cpu_diff();
   Dtype* mutable_gpu_diff();
   // 计算Y=alpha?X+beta?Y
-  
+
+  // 功能：更新params_中blob的值
   void Update();  
   // 从protobuf序列化文件读取blob对象  
   void FromProto(const BlobProto& proto, bool reshape = true);  

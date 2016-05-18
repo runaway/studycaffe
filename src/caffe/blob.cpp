@@ -20,7 +20,15 @@ void Blob<Dtype>::Reshape(const int num, const int channels, const int height,
   shape[3] = width;  
   Reshape(shape);  
 }  
-  
+/*
+功能：改变一个blob的大小 
+步骤：1.读入num_，channels_，height_，width_的大小 
+2.计算count_：count_ = num_ * channels_ * height_ * width_; 
+3.如果count_不为0，则重新为data_和diff_分配一块空间 
+如果count为0，则都初始化为NULL 
+输入：num，channels，height，width 
+输出：无
+*/
 // reshape 的具体实现  
 template <typename Dtype>  
 void Blob<Dtype>::Reshape(const vector<int>& shape) {  
@@ -64,12 +72,19 @@ void Blob<Dtype>::Reshape(const BlobShape& shape) {
   // 调用新的reshape函数  
   Reshape(shape_vec);  
 }  
-  
+/*
+功能：为data_和diff_ 重新分配一块空间，大小和另一个blob的一样 
+输入：Bolb类型的other 
+输出：无
+*/
 template <typename Dtype>  
 void Blob<Dtype>::ReshapeLike(const Blob<Dtype>& other) {  
   Reshape(other.shape());  
 }  
-  
+/*
+功能：简单的构造函数 
+输入：num，channels，height，width
+*/
 template <typename Dtype>  
 Blob<Dtype>::Blob(const int num, const int channels, const int height,  
     const int width)  
@@ -99,7 +114,7 @@ const Dtype* Blob<Dtype>::cpu_data() const {
   CHECK(data_);
   return (const Dtype*)data_->cpu_data();
 }
-
+// 功能：改变CPU的数据
 template <typename Dtype>
 void Blob<Dtype>::set_cpu_data(Dtype* data) {
   CHECK(data);
@@ -123,6 +138,10 @@ const Dtype* Blob<Dtype>::gpu_diff() const {
   CHECK(diff_);
   return (const Dtype*)diff_->gpu_data();
 }
+/*
+功能：以上四个函数，前两个调用to_cpu(),返回cpu_ptr；第一个对于data对象，第二个对于diff对象 
+后两个 调用to_gpu(),返回gpu_ptr；第一个对于data对象，第二个对于diff对象
+*/
 
 template <typename Dtype>
 Dtype* Blob<Dtype>::mutable_cpu_data() {
@@ -166,7 +185,22 @@ void Blob<Dtype>::ShareDiff(const Blob& other) {
 // Blob<int> or Blob<unsigned int>.  
 template <> void Blob<unsigned int>::Update() { NOT_IMPLEMENTED; }  
 template <> void Blob<int>::Update() { NOT_IMPLEMENTED; }  
-  
+
+/*
+功能：更新data_的数据，就是减去diff_的数据。 
+步骤：1.判断blob的位置（HEAD_AT_CPU/HEAD_AT_GPU/SYNCED/UNINITIALIZED） 
+1）调用caffe_axpy：在math_functions.cpp可以找到该函数的实现，其实这函数也是封装了mkl的函数。这里调用是为了实现了两个向量的减法。 
+2）调用caffe_gpu_axpy：在math_functions.cpp可以找到该函数的实现，其实这函数也是封装了cublas的函数。这里调用是为了实现了两个向量的减法。
+
+CopyFrom(const Blob& source, bool copy_diff, bool reshape) 
+功能：从source拷贝数据。copy_diff作为标志来区分是拷贝data还是拷贝diff。 
+步骤：1.如果是GPU： 
+如果是拷贝diff：调用cudaMemcpy函数将source的diff拷贝过来 
+否则拷贝data 
+2.如果是CPU： 
+如果是拷贝diff：调用memcpy函数将source的diff拷贝过来 
+否则拷贝data
+*/
   
 // Update是计算data=-1 * diff + data  
 template <typename Dtype>  
@@ -439,6 +473,16 @@ bool Blob<Dtype>::ShapeEquals(const BlobProto& other) {
   }  
   return shape_ == other_shape;  
 }  
+
+/*
+功能：从source拷贝数据。copy_diff作为标志来区分是拷贝data还是拷贝diff。 
+步骤：1.如果是GPU： 
+如果是拷贝diff：调用cudaMemcpy函数将source的diff拷贝过来 
+否则拷贝data 
+2.如果是CPU： 
+如果是拷贝diff：调用memcpy函数将source的diff拷贝过来 
+否则拷贝data
+*/
   
 // 从别的blob进行复制  
 template <typename Dtype>  
@@ -477,7 +521,14 @@ void Blob<Dtype>::CopyFrom(const Blob& source, bool copy_diff, bool reshape) {
     LOG(FATAL) << "Unknown caffe mode.";  
   }  
 }  
-  
+
+/*
+功能：从proto读数据进来，其实就是反序列化 
+步骤：1.先把blob的大小改变一下 
+2.得到cpu中数据的地址 
+3.用proto中的data覆盖blob中的data 
+4.用proto中的diff覆盖blob中的diff
+*/
 template <typename Dtype>  
 void Blob<Dtype>::FromProto(const BlobProto& proto, bool reshape) {  
   // copy shape  
@@ -531,7 +582,18 @@ void Blob<Dtype>::FromProto(const BlobProto& proto, bool reshape) {
     }  
   }  
 }  
-  
+
+/*
+功能：把网络的参数存入prototxt中 
+步骤： 
+1. 设置网络的名字：param->set_name(name_) 
+2. 加入输入层blob的名字 
+3. 对于第i层：
+
+加入bottom的blob的名字
+加入top的blob的名字
+写到proto中
+*/
 // BlobProto和BlobShape是protobuf定义的，其中一些函数是自动生成的  
 // mutable_shape、add_dim、clear_double_data、clear_double_diff、add_double_data  
 // add_double_diff等  

@@ -24,7 +24,14 @@ SyncedMemory::~SyncedMemory() {
   }  
 #endif  // CPU_ONLY  
 }  
-  
+
+/*
+功能：把数据放到cpu上 
+1.数据未初始化，则在cpu申请内存（申请为0）。此时状态为HEAD_AT_CPU 
+2.数据本来在gpu，则从gpu拷贝内存到cpu。此时状态为SYNCED 
+3.数据本来在cpu，不做处理 
+4.数据在cpu和gpu都有，不做处理
+*/
 // 内部使用的  
 // 如果当前未初始化，直接在内存分配空间  
 // 如果在GPU上则复制到内存  
@@ -59,6 +66,14 @@ inline void SyncedMemory::to_cpu() {
   }
 }
 
+
+/*
+功能：把数据放到gpu上 
+1.数据未初始化，在gpu申请内存（申请为0）。此时状态为HEAD_AT_GPU 
+2.数据在cpu，从cpu拷贝到gpu。此时状态为SYNCED 
+3.数据在gpu，不做操作。 
+4.数据在cpu和gpu都有，不做操作。
+*/
 // 内部使用的  
 // 如果当前未初始化直接在GPU分配内存  
 // 如果当前在CPU，则在GPU上分配内存并且复制到GPU  
@@ -93,7 +108,8 @@ inline void SyncedMemory::to_gpu() {
   NO_GPU;  
 #endif  
 }  
-  
+
+// 功能：返回数据在cpu的指针  
 // 首先不管三七二十一将数据搞到内存上去  
 // 然后获取cpu上的数据  
 const void* SyncedMemory::cpu_data() {  
@@ -150,7 +166,7 @@ void SyncedMemory::set_gpu_data(void* data) {
   NO_GPU;
 #endif
 }
-
+// 功能：返回数据在cpu的指针，并改变数据的状态为HEAD_AT_CPU
 // 首先不管三七二十一先数据搞到CPU上去  
 // 然后返回互斥的cpu_ptr_指针  
 // mutable_cpu_data与cpu_data的区别就是是否设置head  
@@ -160,7 +176,7 @@ void* SyncedMemory::mutable_cpu_data() {
   return cpu_ptr_;  
 }  
   
-  
+// 功能：返回数据在cpu的指针，并改变数据的状态为HEAD_AT_GPU  
 // 首先不管三七二十一先数据搞到GPU上去  
 // 然后返回互斥的gpu_ptr_指针  
 // mutable_gpu_data与gpu_data的区别就是是否设置head  

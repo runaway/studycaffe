@@ -816,7 +816,21 @@ void Net<Dtype>::UpdateDebugInfo(const int param_id) {
         << " diff: " << diff_abs_val_mean;
   }
 }
+/*
+功能：从Other网络复制某些层 
+步骤：对Other网络的第i层（源层）： 
+1. 定义一个Layer的指针指向第i层 
+2. 读取第i层（源层）的名字 
+3. 找通过名字来找目标层 
+如果没找到，即target_layer_id == layer_names_.size() 
+则忽略Other的第i层，即Other的第i层不需要share给网络 
+4. 如果找到了，即other的第i层需要share给网络， 
+则把目标层的所有blob读到target_blobs中
 
+判断目标层和源层的blob数量是否相等
+判断每个blob大小是否相等
+调用ShareData函数把源层的blob赋给目标层的blob
+*/
 template <typename Dtype>
 void Net<Dtype>::ShareTrainedLayersWith(const Net* other) {
   int num_source_layers = other->layers().size();
@@ -884,7 +898,10 @@ void Net<Dtype>::Reshape() {
     layers_[i]->Reshape(bottom_vecs_[i], top_vecs_[i]);
   }
 }
-
+/*
+功能：和ShareTrainedLayersWith一样 
+步骤：不同的是调用FromProto函数把源层的blob赋给目标层的blob
+*/
 template <typename Dtype>
 void Net<Dtype>::CopyTrainedLayersFrom(const NetParameter& param) {
   int num_source_layers = param.layer_size();
@@ -922,7 +939,7 @@ void Net<Dtype>::CopyTrainedLayersFrom(const NetParameter& param) {
     }
   }
 }
-
+// 功能：从文件中读入NetParameter param，然后调用CopyTrainedLayersFrom()
 template <typename Dtype>
 void Net<Dtype>::CopyTrainedLayersFrom(const string trained_filename) {
   if (trained_filename.size() >= 3 &&

@@ -36,6 +36,12 @@ class Net {
    *
    */
   const vector<Blob<Dtype>*>& Forward(Dtype* loss = NULL);
+
+/*
+功能：前馈预先填满，即预先进行一次前馈 
+输入：Dtype* loss 
+输出：net_output_blobs_，前馈后的输出层blob：vector
+*/
   /// @brief DEPRECATED; use Forward() instead.
   const vector<Blob<Dtype>*>& ForwardPrefilled(Dtype* loss = NULL) {
     LOG_EVERY_N(WARNING, 1000) << "DEPRECATED: ForwardPrefilled() "
@@ -54,6 +60,12 @@ class Net {
   Dtype ForwardFromTo(int start, int end);
   Dtype ForwardFrom(int start);
   Dtype ForwardTo(int end);
+
+/*
+功能：把网络输入层的blob读到net_input_blobs_，然后进行前馈，计算出loss 
+输入：整个网络输入层的blob 
+输出：整个网络输出层的blob
+*/
   /// @brief DEPRECATED; set input blobs then use Forward() instead.
   const vector<Blob<Dtype>*>& Forward(const vector<Blob<Dtype>* > & bottom,
       Dtype* loss = NULL);
@@ -63,7 +75,8 @@ class Net {
    *        Should be run before Backward.
    */
   void ClearParamDiffs();
-
+  
+  // 功能：对整个网络进行反向传播
   /**
    * The network backward should take no input and output, since it solely
    * computes the gradient w.r.t the parameters, and the data has already been
@@ -211,8 +224,13 @@ class Net {
   inline const vector<int>& output_blob_indices() const {
     return net_output_blob_indices_;
   }
+  // 功能：判断是否存在名字为blob_name的blob
   bool has_blob(const string& blob_name) const;
+
+  // 功能：给一个blob的名字，返回这个blob的指针
   const shared_ptr<Blob<Dtype> > blob_by_name(const string& blob_name) const;
+
+  // 功能：判断是否存在名字为layer_name的layer
   bool has_layer(const string& layer_name) const;
   const shared_ptr<Layer<Dtype> > layer_by_name(const string& layer_name) const;
 
