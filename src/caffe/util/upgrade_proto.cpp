@@ -276,7 +276,7 @@ bool UpgradeV0LayerParameter(const V1LayerParameter& v0_layer_connection,
     if (v0_layer_param.has_kernelsize()) {
       if (type == "conv") {
         layer_param->mutable_convolution_param()->add_kernel_size(
-            v0_layer_param.kernelsize());
+            v0_layer_param.kernelsize()); // 核大小
       } else if (type == "pool") {
         layer_param->mutable_pooling_param()->set_kernel_size(
             v0_layer_param.kernelsize());
@@ -297,7 +297,7 @@ bool UpgradeV0LayerParameter(const V1LayerParameter& v0_layer_connection,
     if (v0_layer_param.has_stride()) {
       if (type == "conv") {
         layer_param->mutable_convolution_param()->add_stride(
-            v0_layer_param.stride());
+            v0_layer_param.stride()); // 步长
       } else if (type == "pool") {
         layer_param->mutable_pooling_param()->set_stride(
             v0_layer_param.stride());

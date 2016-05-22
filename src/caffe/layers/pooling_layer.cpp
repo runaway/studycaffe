@@ -137,7 +137,7 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   // Different pooling methods. We explicitly do the switch outside the for
   // loop to save time, although this results in more code.
   switch (this->layer_param_.pooling_param().pool()) {
-  case PoolingParameter_PoolMethod_MAX:
+  case PoolingParameter_PoolMethod_MAX: // 最大采样方法
     // Initialize
     if (use_top_mask) {
       top_mask = top[1]->mutable_cpu_data();
@@ -151,6 +151,7 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     for (int n = 0; n < bottom[0]->num(); ++n) {
       for (int c = 0; c < channels_; ++c) {
         for (int ph = 0; ph < pooled_height_; ++ph) {
+              
           for (int pw = 0; pw < pooled_width_; ++pw) {
             int hstart = ph * stride_h_ - pad_h_;
             int wstart = pw * stride_w_ - pad_w_;
@@ -160,6 +161,7 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
             wstart = max(wstart, 0);
             const int pool_index = ph * pooled_width_ + pw;
             for (int h = hstart; h < hend; ++h) {
+                // 找出核范围内最大
               for (int w = wstart; w < wend; ++w) {
                 const int index = h * width_ + w;
                 if (bottom_data[index] > top_data[pool_index]) {
@@ -174,6 +176,7 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
             }
           }
         }
+        // 指针移动到下一个channel。注意代码这里的位置。采样是针对每个channel的。
         // compute offset
         bottom_data += bottom[0]->offset(0, 1);
         top_data += top[0]->offset(0, 1);
@@ -204,6 +207,7 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
             hend = min(hend, height_);
             wend = min(wend, width_);
             for (int h = hstart; h < hend; ++h) {
+                // 核范围内算平均
               for (int w = wstart; w < wend; ++w) {
                 top_data[ph * pooled_width_ + pw] +=
                     bottom_data[h * width_ + w];
@@ -212,6 +216,7 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
             top_data[ph * pooled_width_ + pw] /= pool_size;
           }
         }
+        // 移动到下一个channel
         // compute offset
         bottom_data += bottom[0]->offset(0, 1);
         top_data += top[0]->offset(0, 1);
@@ -259,6 +264,7 @@ void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
             bottom_diff[bottom_index] += top_diff[index];
           }
         }
+        // 采样层输出的残传播给输入。由于是最大采样方法，输出存的都是输入范围内最大的值，所以残差传播的时候也只有范围内最大的值受影响
         bottom_diff += bottom[0]->offset(0, 1);
         top_diff += top[0]->offset(0, 1);
         if (use_top_mask) {
@@ -286,6 +292,7 @@ void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
             wend = min(wend, width_);
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
+                // 采样层输出的残差传播给输入，由于是平均采样，所以权重都是
                 bottom_diff[h * width_ + w] +=
                   top_diff[ph * pooled_width_ + pw] / pool_size;
               }

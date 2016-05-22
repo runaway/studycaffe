@@ -17,8 +17,9 @@ void PowerLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
 
 // Compute y = (shift + scale * x)^power
 template <typename Dtype>
-void PowerLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
-    const vector<Blob<Dtype>*>& top) {
+void PowerLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, // 采样层输入
+    const vector<Blob<Dtype>*>& top) // 采样层输出
+{
   Dtype* top_data = top[0]->mutable_cpu_data();
   const int count = bottom[0]->count();
   // Special case where we can ignore the input: scale or power is 0.
