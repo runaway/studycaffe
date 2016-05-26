@@ -11,6 +11,8 @@
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/util/math_functions.hpp"
 
+// 其中layer.hpp是抽象出来的基类，其他都是在其基础上的继承，也即剩下的五个头文件和上图中的五个部分。
+
 /**
  Forward declare boost::thread instead of including boost/thread.hpp
  to avoid a boost/NVCC issues (#1009, #1010) on OSX.
@@ -32,6 +34,18 @@ namespace caffe {
 template <typename Dtype>
 class Layer {
  public:
+    // Layer类的构建函数explicit Layer(const LayerParameter& param) : layer_param_(param)会尝试从protobuf文件读取参数。
+    // 其三个主要接口：SetUp Forward Backward
+    /*
+SetUp函数需要根据实际的参数设置进行实现，对各种类型的参数初始化；Forward和Backward对应前向计算和反向更新，输入统一都是bottom，输出为top，其中Backward里面有个propagate_down参数，用来表示该Layer是否反向传播参数。
+
+在Forward和Backward的具体实现里，会根据Caffe::mode()进行对应的操作，即使用cpu或者gpu进行计算，两个都实现了对应的接口Forward_cpu、Forward_gpu和Backward_cpu、Backward_gpu，这些接口都是virtual，具体还是要根据layer的类型进行对应的计算（注意：有些layer并没有GPU计算的实现，所以封装时加入了CPU的计算作为后备）。另外，还实现了ToProto的接口，将Layer的参数写入到protocol buffer文件中。
+    */
+
+// 用从protobuf 读入message LayerParameter 中的blobs 初始化 blobs_ 
+// blobs_定义：vector<shared_ptr<Blob<Dtype> > > blobs_
+
+    
   /**
    * You should not implement your own constructor. Any set up code should go
    * to SetUp(), where the dimensions of the bottom blobs are provided to the
@@ -353,7 +367,9 @@ class Layer {
 
 
  protected:
-    // 层的参数
+
+    // layer中有这三个主要参数：    
+    // 层的参数 这个是protobuf文件中存储的layer参数
   /** The protobuf that stores the layer parameters */
   LayerParameter layer_param_;
 
@@ -361,11 +377,13 @@ class Layer {
   /** The phase: TRAIN or TEST */
   Phase phase_;
 
-    // blobs_的是blob指针容器  
+    // blobs_的是blob指针容器
+    // 这个存储的是layer的参数，在程序中用的 
   /** The vector that stores the learnable parameters as a set of blobs. */
-  vector<shared_ptr<Blob<Dtype> > > blobs_;
+  vector<shared_ptr<Blob<Dtype> > > blobs_; 
 
     // 是否需要计算梯度，也即是否需要往下传播  
+    // 这个bool表示是否计算各个blob参数的diff，即传播误差
   /** Vector indicating whether to compute the diff of each param blob. */
   vector<bool> param_propagate_down_;
 

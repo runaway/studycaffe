@@ -109,6 +109,21 @@ MemoryDataLayer则是继承自BaseDataLayer
 这一次的量还真有点大。。。
 */
 
+/*
+看到hdf5、leveldb、lmdb，确实是与具体数据相关了。data_layer作为原始数据的输入层，处于整个网络的最底层，它可以从数据库leveldb、lmdb中读取数据，也可以直接从内存中读取，还可以从hdf5，甚至是原始的图像读入数据。
+
+关于这几个数据库，简介如下：
+
+LevelDB是Google公司搞的一个高性能的key/value存储库，调用简单，数据是被Snappy压缩，据说效率很多，可以减少磁盘I/O，具体例子可以看看维基百科。
+
+而LMDB（Lightning Memory-Mapped Database），是个和levelDB类似的key/value存储库，但效果似乎更好些，其首页上写道“ultra-fast，ultra-compact”，这个有待进一步学习啊～～
+
+HDF（Hierarchical Data Format）是一种为存储和处理大容量科学数据而设计的文件格式及相应的库文件，当前最流行的版本是HDF5,其文件包含两种基本数据对象：
+
+群组（group）：类似文件夹，可以包含多个数据集或下级群组；
+数据集（dataset）：数据内容，可以是多维数组，也可以是更复杂的数据类型。
+*/
+
 namespace caffe {
 
 template <typename Dtype>

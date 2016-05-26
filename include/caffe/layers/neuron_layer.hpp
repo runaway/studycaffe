@@ -6,7 +6,11 @@
 #include "caffe/blob.hpp"
 #include "caffe/layer.hpp"
 #include "caffe/proto/caffe.pb.h"
-
+/*
+输入了data后，就要计算了，比如常见的sigmoid、tanh等等，这些都计算操作被抽象成了
+neuron_layers.hpp里面的类NeuronLayer，这个层只负责具体的计算，因此明确定义了输
+入ExactNumBottomBlobs()和ExactNumTopBlobs()都是常量1,即输入一个blob，输出一个blob。
+*/
 namespace caffe {
 
 /**

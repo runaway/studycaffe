@@ -4,7 +4,11 @@
 #include <vector>
 
 #include "caffe/layers/argmax_layer.hpp"
-
+/*
+NeruonLayer仅仅负责简单的一对一计算，而剩下的那些复杂的计算则通通放在了common_layers.hpp
+中。像ArgMaxLayer、ConcatLayer、FlattenLayer、SoftmaxLayer、SplitLayer和SliceLayer
+等各种对blob增减修改的操作。
+*/
 namespace caffe {
 
 template <typename Dtype>

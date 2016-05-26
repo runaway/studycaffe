@@ -2,7 +2,7 @@
 #define CAFFE_INTERNAL_THREAD_HPP_
 
 #include "caffe/common.hpp"
-
+// internal_thread.hpp里面封装了pthread函数，继承的子类可以得到一个单独的线程，主要作用是在计算当前的一批数据时，在后台获取新一批的数据。
 /**
  Forward declare boost::thread instead of including boost/thread.hpp
  to avoid a boost/NVCC issues (#1009, #1010) on OSX.

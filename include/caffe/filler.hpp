@@ -11,9 +11,13 @@
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/syncedmem.hpp"
 #include "caffe/util/math_functions.hpp"
-
-// Filler层的作用实际上就是根据proto中给出的参数对权重进行初始化，初始化的方式有很多种，分别为常量初始化（constant）、高斯分布初始化（gaussian）、positive_unitball初始化、均匀分布初始化（uniform）、xavier初始化、msra初始化、双线性初始化（bilinear）这么几种。
-
+/*
+Filler层的作用实际上就是根据proto中给出的参数对权重进行初始化，初始化的方式有
+很多种，分别为常量初始化（constant）、高斯分布初始化（gaussian）、positive_unitball
+初始化、均匀分布初始化（uniform）、xavier初始化、msra初始化、双线性初始化
+（bilinear）这么几种。
+*/
+// caffe/filler.hpp的作用是在网络初始化时，根据layer的定义进行初始参数的填充，下面的代码很直观，根据FillerParameter指定的类型进行对应的参数填充
 namespace caffe {
 
 /// @brief Fills a Blob with constant or randomly-generated data.

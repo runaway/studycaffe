@@ -28,8 +28,10 @@ void ConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 {
     const Dtype* weight = this->blobs_[0]->cpu_data();
 
+    // blobs_ 用来存储可学习的参数blobs_[0] 是weight，blobs_[1]是bias
     for (int i = 0; i < bottom.size(); ++i) 
     {
+        // 这里的i为输入bottom的个数，输入多少个bottom就产生相应个数的输出 top。
         const Dtype* bottom_data = bottom[i]->cpu_data();
         Dtype* top_data = top[i]->mutable_cpu_data();
 
@@ -41,7 +43,7 @@ void ConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
             // weights X bottom_data[n * this->bottom_dim_]  
             // 输入的是一幅图像的数据，对应的是这幅图像卷积之后的位置 
             this->forward_cpu_gemm(bottom_data + n * this->bottom_dim_, weight,
-            top_data + n * this->top_dim_);
+            top_data + n * this->top_dim_); // 计算卷积操作之后的输出
             
             if (this->bias_term_) 
             {
@@ -57,9 +59,14 @@ void ConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
   const Dtype* weight = this->blobs_[0]->cpu_data();
   Dtype* weight_diff = this->blobs_[0]->mutable_cpu_diff();
+  
   for (int i = 0; i < top.size(); ++i) {
+
+    // 上一层传下来的导数
     const Dtype* top_diff = top[i]->cpu_diff();
     const Dtype* bottom_data = bottom[i]->cpu_data();
+
+    // 传给下一层的导数
     Dtype* bottom_diff = bottom[i]->mutable_cpu_diff();
     // Bias gradient, if necessary.
     if (this->bias_term_ && this->param_propagate_down_[1]) {
@@ -68,18 +75,19 @@ void ConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
         this->backward_cpu_bias(bias_diff, top_diff + n * this->top_dim_);
       }
     }
+    
     if (this->param_propagate_down_[0] || propagate_down[i]) {
       for (int n = 0; n < this->num_; ++n) {
         // gradient w.r.t. weight. Note that we will accumulate diffs.
         if (this->param_propagate_down_[0]) {
           this->weight_cpu_gemm(bottom_data + n * this->bottom_dim_,
               top_diff + n * this->top_dim_, weight_diff);
-        }
+        } //对weight 计算导数（用来更新weight）
         // gradient w.r.t. bottom data, if necessary.
         if (propagate_down[i]) {
           this->backward_cpu_gemm(top_diff + n * this->top_dim_, weight,
               bottom_diff + n * this->bottom_dim_);
-        }
+        } //对bottom数据计算导数（传给下一层）
       }
     }
   }
