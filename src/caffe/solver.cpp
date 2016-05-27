@@ -49,32 +49,40 @@ Solver<Dtype>::Solver(const string& param_file, const Solver* root_solver)
 // 输入：SolverParameter类型的param 
 // 输出：无
 template <typename Dtype>
-void Solver<Dtype>::Init(const SolverParameter& param) {
-  CHECK(Caffe::root_solver() || root_solver_)
+void Solver<Dtype>::Init(const SolverParameter& param) 
+{
+    CHECK(Caffe::root_solver() || root_solver_)
       << "root_solver_ needs to be set for all non-root solvers";
-  LOG_IF(INFO, Caffe::root_solver()) << "Initializing solver from parameters: "
+    LOG_IF(INFO, Caffe::root_solver()) << "Initializing solver from parameters: "
     << std::endl << param.DebugString();
-  param_ = param;
-  CHECK_GE(param_.average_loss(), 1) << "average_loss should be non-negative.";
-  CheckSnapshotWritePermissions();
 
-  // 1. 设置随机数种子 
-  if (Caffe::root_solver() && param_.random_seed() >= 0) {
-    Caffe::set_random_seed(param_.random_seed());
-  }
+    // 为solver类的数据成员param_赋值  
+    param_ = param;
+    CHECK_GE(param_.average_loss(), 1) << "average_loss should be non-negative.";
+    CheckSnapshotWritePermissions();
 
-  // 2. 申请一块Net空间以下面的构造函数进行初始化 
-  // param_file=train_net_，net_指向这块空间 
-  // Scaffolding code
-  InitTrainNet();
+    // 1. 设置随机数种子 
+    if (Caffe::root_solver() && param_.random_seed() >= 0) 
+    {
+        // 调用Caffe命名空间里的set_random_seed函数，而不是caffe类的set_random_seed函数；
+        // param_.random_seed()实际上调用的是::google::protobuf::int64 random_seed() 
+        Caffe::set_random_seed(param_.random_seed());
+    }
 
-  // 如果有test_net，则申请一块Net空间，test_net_指向这块空间 
-  if (Caffe::root_solver()) {
-    InitTestNets();
-    LOG(INFO) << "Solver scaffolding done.";
-  }
-  iter_ = 0;
-  current_step_ = 0;
+    // 2. 申请一块Net空间以下面的构造函数进行初始化 
+    // param_file=train_net_，net_指向这块空间 
+    // Scaffolding code
+    InitTrainNet();
+
+    // 如果有test_net，则申请一块Net空间，test_net_指向这块空间 
+    if (Caffe::root_solver()) 
+    {
+        InitTestNets();
+        LOG(INFO) << "Solver scaffolding done.";
+    }
+    
+    iter_ = 0;
+    current_step_ = 0;
 }
 
 template <typename Dtype>
@@ -112,16 +120,25 @@ void Solver<Dtype>::InitTrainNet() {
   // precedence).
   NetState net_state;
   net_state.set_phase(TRAIN);
+
+  // 从低到高获取state,最终从最高优先级SolverParameter类型中的train_state,显然这会覆盖掉之前获取的state。  
   net_state.MergeFrom(net_param.state());
+
+  // 这里获取的state可以为Netparameter中的state赋值，然后可以根据LayerParameter中的include和exclude来确定该层是否应该包含在网络中。  
   net_state.MergeFrom(param_.train_state());
+
+  // 这是Initialize train net 的一部分工作。InitTestNets也是如此 
   net_param.mutable_state()->CopyFrom(net_state);
+
   if (Caffe::root_solver()) {
+    // 调用模板类的构造函数，进行net的初始化  
     net_.reset(new Net<Dtype>(net_param));
   } else {
     net_.reset(new Net<Dtype>(net_param, root_solver_->net_.get()));
   }
 }
 
+// 需要注意的是TestNet可以有多个，而TrainNet只能有一个
 template <typename Dtype>
 void Solver<Dtype>::InitTestNets() {
   CHECK(Caffe::root_solver());
@@ -145,7 +162,10 @@ void Solver<Dtype>::InitTestNets() {
   // test networks -- the actual number is given by the number of remaining
   // test_iters after any test nets specified by test_net_param and/or test_net
   // are evaluated.
+  // 可以有多个test net  
   const int num_generic_net_instances = param_.test_iter_size() - num_test_nets;
+
+  // num_test_net_instances由num_test_nets和num_generic_net_instances组成，实际上也就是param_.test_iter_size()  
   const int num_test_net_instances = num_test_nets + num_generic_net_instances;
   if (param_.test_state_size()) {
     CHECK_EQ(param_.test_state_size(), num_test_net_instances)
@@ -205,50 +225,63 @@ void Solver<Dtype>::InitTestNets() {
 }
 
 template <typename Dtype>
-void Solver<Dtype>::Step(int iters) {
-  const int start_iter = iter_;
-  const int stop_iter = iter_ + iters;
-  int average_loss = this->param_.average_loss();
-  losses_.clear();
-  smoothed_loss_ = 0;
+void Solver<Dtype>::Step(int iters) 
+{
+    const int start_iter = iter_;
+    const int stop_iter = iter_ + iters;
+    int average_loss = this->param_.average_loss();
+    losses_.clear();
+    smoothed_loss_ = 0;
 
-  // 对于每一次训练时的迭代(遍历整个网络)
-  while (iter_ < stop_iter) {
-    // zero-init the params
-    net_->ClearParamDiffs();
-    if (param_.test_interval() && iter_ % param_.test_interval() == 0
+    // 对于每一次训练时的迭代(遍历整个网络)
+    while (iter_ < stop_iter)
+    {
+        // zero-init the params
+        net_->ClearParamDiffs();
+
+        // test_initialization默认为true 
+        if (param_.test_interval() && iter_ % param_.test_interval() == 0
         && (iter_ > 0 || param_.test_initialization())
-        && Caffe::root_solver()) {
-      TestAll();
-      if (requested_early_exit_) {
-        // Break out of the while loop because stop was requested while testing.
-        break;
-      }
-    }
+        && Caffe::root_solver()) 
+        {
+            TestAll();
 
-    for (int i = 0; i < callbacks_.size(); ++i) {
-      callbacks_[i]->on_start();
-    }
-    const bool display = param_.display() && iter_ % param_.display() == 0;
-    net_->set_debug_info(display && param_.debug_info());
-    // accumulate the loss and gradient
-    Dtype loss = 0;
+            if (requested_early_exit_) 
+            {
+                // Break out of the while loop because stop was requested while testing.
+                break;
+            }
+        }
 
-    // 1. 计算loss：loss = net_->ForwardBackward(bottom_vec)其中：
-    for (int i = 0; i < param_.iter_size(); ++i) {
-      loss += net_->ForwardBackward();
-    }
-    loss /= param_.iter_size();
+        for (int i = 0; i < callbacks_.size(); ++i) 
+        {
+            callbacks_[i]->on_start();
+        }
+        
+        const bool display = param_.display() && iter_ % param_.display() == 0;
+        net_->set_debug_info(display && param_.debug_info());
+        // accumulate the loss and gradient
+        Dtype loss = 0;
 
-    // 3. 输出 losses_
-    // average the loss across iterations for smoothed reporting
-    UpdateSmoothedLoss(loss, start_iter, average_loss);
-    if (display) {
-      LOG_IF(INFO, Caffe::root_solver()) << "Iteration " << iter_
+        // 1. 计算loss：loss = net_->ForwardBackward(bottom_vec)其中：
+        for (int i = 0; i < param_.iter_size(); ++i) 
+        {
+            loss += net_->ForwardBackward();
+        }
+
+        // accumulate（累积） gradients over `iter_size` x `batch_size` 
+        // instances。默认情况下，iter_size=1,即默认情况下，一个iteratio一个batch 
+        loss /= param_.iter_size();
+
+        // 3. 输出 losses_
+        // average the loss across iterations for smoothed reporting
+        UpdateSmoothedLoss(loss, start_iter, average_loss);
+        if (display) {
+        LOG_IF(INFO, Caffe::root_solver()) << "Iteration " << iter_
           << ", loss = " << smoothed_loss_;
-      const vector<Blob<Dtype>*>& result = net_->output_blobs();
-      int score_index = 0;
-      for (int j = 0; j < result.size(); ++j) {
+        const vector<Blob<Dtype>*>& result = net_->output_blobs();
+        int score_index = 0;
+        for (int j = 0; j < result.size(); ++j) {
         const Dtype* result_vec = result[j]->cpu_data();
         const string& output_name =
             net_->blob_names()[net_->output_blob_indices()[j]];
@@ -264,87 +297,101 @@ void Solver<Dtype>::Step(int iters) {
               << score_index++ << ": " << output_name << " = "
               << result_vec[k] << loss_msg_stream.str();
         }
-      }
-    }
-    for (int i = 0; i < callbacks_.size(); ++i) {
-      callbacks_[i]->on_gradients_ready();
-    }
+        }
+        }
+        for (int i = 0; i < callbacks_.size(); ++i) {
+        callbacks_[i]->on_gradients_ready();
+        }
 
-    // 2. 调用ComputeUpdateValue函数:ComputeUpdateValue() 
-    ApplyUpdate();
+        // 2. 调用ComputeUpdateValue函数:ComputeUpdateValue() 
+        ApplyUpdate();
 
-    // Increment the internal iter_ counter -- its value should always indicate
-    // the number of times the weights have been updated.
-    ++iter_;
+        // Increment the internal iter_ counter -- its value should always indicate
+        // the number of times the weights have been updated.
+        ++iter_;
 
-    SolverAction::Enum request = GetRequestedAction();
+        SolverAction::Enum request = GetRequestedAction();
 
-    // 5. 达到snapshot时调用snapshot() 
-    // Save a snapshot if needed.
-    if ((param_.snapshot()
+        // 5. 达到snapshot时调用snapshot() 
+        // Save a snapshot if needed.
+        if ((param_.snapshot()
          && iter_ % param_.snapshot() == 0
          && Caffe::root_solver()) ||
          (request == SolverAction::SNAPSHOT)) {
-      Snapshot();
+        Snapshot();
+        }
+        if (SolverAction::STOP == request) {
+        requested_early_exit_ = true;
+        // Break out of training loop.
+        break;
+        }
     }
-    if (SolverAction::STOP == request) {
-      requested_early_exit_ = true;
-      // Break out of training loop.
-      break;
-    }
-  }
 }
 
 // 功能：训练网络 
+/*
+对整个网络进行训练（也就是你运行Caffe训练某个模型）的时候，实际上是在运行caffe.cpp
+中的train( )函数，而这个函数实际上是实例化一个Solver对象，初始化后调用了Solver中
+的Solve( )方法
+调用此方法训练网络，其中会调用Step()方法来迭代，迭代 param_.max_iter() - iter_ 次  
+*/
 template <typename Dtype>
-void Solver<Dtype>::Solve(const char* resume_file) {
-  CHECK(Caffe::root_solver());
-  LOG(INFO) << "Solving " << net_->name();
-  LOG(INFO) << "Learning Rate Policy: " << param_.lr_policy();
+void Solver<Dtype>::Solve(const char* resume_file) 
+{
+    CHECK(Caffe::root_solver());
+    LOG(INFO) << "Solving " << net_->name();
+    LOG(INFO) << "Learning Rate Policy: " << param_.lr_policy();
 
-  // Initialize to false every time we start solving.
-  requested_early_exit_ = false;
+    // Initialize to false every time we start solving.
+    requested_early_exit_ = false;
 
-  if (resume_file) {
-    LOG(INFO) << "Restoring previous solver status from " << resume_file;
-    Restore(resume_file);
-  }
+    if (resume_file) 
+    {
+        LOG(INFO) << "Restoring previous solver status from " << resume_file;
+        Restore(resume_file);
+    }
 
-  // For a network that is trained by the solver, no bottom or top vecs
-  // should be given, and we will just provide dummy vecs.
-  int start_iter = iter_;
-  Step(param_.max_iter() - iter_);
-  // If we haven't already, save a snapshot after optimization, unless
-  // overridden by setting snapshot_after_train := false
-  if (param_.snapshot_after_train()
-      && (!param_.snapshot() || iter_ % param_.snapshot() != 0)) {
-    Snapshot();
-  }
-  if (requested_early_exit_) {
-    LOG(INFO) << "Optimization stopped early.";
-    return;
-  }
-  // After the optimization is done, run an additional train and test pass to
-  // display the train and test loss/outputs if appropriate (based on the
-  // display and test_interval settings, respectively).  Unlike in the rest of
-  // training, for the train net we only run a forward pass as we've already
-  // updated the parameters "max_iter" times -- this final pass is only done to
-  // display the loss, which is computed in the forward pass.
-  if (param_.display() && iter_ % param_.display() == 0) {
-    int average_loss = this->param_.average_loss();
-    Dtype loss;
-    net_->Forward(&loss);
+    // For a network that is trained by the solver, no bottom or top vecs
+    // should be given, and we will just provide dummy vecs.
+    int start_iter = iter_;
+    Step(param_.max_iter() - iter_);
+    
+    // If we haven't already, save a snapshot after optimization, unless
+    // overridden by setting snapshot_after_train := false
+    if (param_.snapshot_after_train()
+     && (!param_.snapshot() || iter_ % param_.snapshot() != 0)) 
+    {
+        Snapshot();
+    }
+    
+    if (requested_early_exit_) 
+    {
+        LOG(INFO) << "Optimization stopped early.";
+        return;
+    }
+    
+    // After the optimization is done, run an additional train and test pass to
+    // display the train and test loss/outputs if appropriate (based on the
+    // display and test_interval settings, respectively).  Unlike in the rest of
+    // training, for the train net we only run a forward pass as we've already
+    // updated the parameters "max_iter" times -- this final pass is only done to
+    // display the loss, which is computed in the forward pass.
+    if (param_.display() && iter_ % param_.display() == 0) 
+    {
+        int average_loss = this->param_.average_loss();
+        Dtype loss;
+        net_->Forward(&loss);
 
-    UpdateSmoothedLoss(loss, start_iter, average_loss);
+        UpdateSmoothedLoss(loss, start_iter, average_loss);
 
-    LOG(INFO) << "Iteration " << iter_ << ", loss = " << smoothed_loss_;
-  }
+        LOG(INFO) << "Iteration " << iter_ << ", loss = " << smoothed_loss_;
+    }
 
-  // 4. 达到test_interval时调用Test() 
-  if (param_.test_interval() && iter_ % param_.test_interval() == 0) {
+    // 4. 达到test_interval时调用Test() 
+    if (param_.test_interval() && iter_ % param_.test_interval() == 0) {
     TestAll();
-  }
-  LOG(INFO) << "Optimization Done.";
+    }
+    LOG(INFO) << "Optimization Done.";
 }
 
 template <typename Dtype>
@@ -362,6 +409,8 @@ void Solver<Dtype>::Test(const int test_net_id)
     CHECK(Caffe::root_solver());
     LOG(INFO) << "Iteration " << iter_
     << ", Testing net (#" << test_net_id << ")";
+
+    // 检查是否有layer共享于多个网络
     CHECK_NOTNULL(test_nets_[test_net_id].get())->
     ShareTrainedLayersWith(net_.get());
     vector<Dtype> test_score;
@@ -468,13 +517,16 @@ void Solver<Dtype>::Test(const int test_net_id)
         const string& output_name = test_net->blob_names()[output_blob_index];
         const Dtype loss_weight = test_net->blob_loss_weights()[output_blob_index];
         ostringstream loss_msg_stream;
+
+        // 求多次迭代Loss的平均值，也就是求多个batch的平局值，因为一次迭代用的是一个test batch-size 的图片  
         const Dtype mean_score = test_score[i] / param_.test_iter(test_net_id);
 
         if (loss_weight) 
         {
-        loss_msg_stream << " (* " << loss_weight
-                  << " = " << loss_weight * mean_score << " loss)";
+            loss_msg_stream << " (* " << loss_weight
+                      << " = " << loss_weight * mean_score << " loss)";
         }
+        
         LOG(INFO) << "    Test net output #" << i << ": " << output_name << " = "
           << mean_score << loss_msg_stream.str();
     }

@@ -40,6 +40,7 @@ typedef boost::function<SolverAction::Enum()> ActionCallback;
 template <typename Dtype>
 class Solver {
  public:
+  // 会调用Init()方法进行初始化，即Solver scaffolding 
   explicit Solver(const SolverParameter& param,
       const Solver* root_solver = NULL);
   explicit Solver(const string& param_file, const Solver* root_solver = NULL);
@@ -110,10 +111,16 @@ class Solver {
   void UpdateSmoothedLoss(Dtype loss, int start_iter, int average_loss);
 
   SolverParameter param_;
+
+  // 在测试的时候，需要迭代的次数，即test_iter* batchsize（测试集的）=测试集的大小，测试集batchsize可以在prototxt文件里设置
   int iter_;
   int current_step_;
   shared_ptr<Net<Dtype> > net_;
+
+  // test net可以有多个
   vector<shared_ptr<Net<Dtype> > > test_nets_;
+
+  // 嵌套类，暂时还不知道它的作用  
   vector<Callback*> callbacks_;
   vector<Dtype> losses_;
   Dtype smoothed_loss_;

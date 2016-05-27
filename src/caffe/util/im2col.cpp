@@ -105,7 +105,7 @@ template void im2col_cpu<double>(const double* data_im, const int channels,
     const int stride_w, const int dilation_h, const int dilation_w,
     double* data_col);
 /*
-上面介绍了二维卷积，那么我们就乘热打铁，再看看n维通用卷积是如何实现的
+上面介绍了二维卷积，那么我们就趁热打铁，再看看n维通用卷积是如何实现的
 接下来介绍n维通用的卷积的具体实现
 n维卷积的实现与二维卷积的实现很类似，只不过对应的变量进行了变化，你只需要找到对应就可以很快理解
 

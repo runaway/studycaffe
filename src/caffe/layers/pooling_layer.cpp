@@ -35,6 +35,8 @@ void PoolingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       || (!pool_param.has_stride_h() && !pool_param.has_stride_w()))
       << "Stride is stride OR stride_h and stride_w are required.";
   global_pooling_ = pool_param.global_pooling();
+
+  // 全局pooling
   if (global_pooling_) {
     kernel_h_ = bottom[0]->height();
     kernel_w_ = bottom[0]->width();
@@ -42,6 +44,7 @@ void PoolingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
     if (pool_param.has_kernel_size()) {
       kernel_h_ = kernel_w_ = pool_param.kernel_size();
     } else {
+    // 用户自定义的kernel大小
       kernel_h_ = pool_param.kernel_h();
       kernel_w_ = pool_param.kernel_w();
     }
@@ -51,9 +54,12 @@ void PoolingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   if (!pool_param.has_pad_h()) {
     pad_h_ = pad_w_ = pool_param.pad();
   } else {
+  // 填充
     pad_h_ = pool_param.pad_h();
     pad_w_ = pool_param.pad_w();
   }
+
+  // 步长
   if (!pool_param.has_stride_h()) {
     stride_h_ = stride_w_ = pool_param.stride();
   } else {
@@ -64,6 +70,8 @@ void PoolingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
     CHECK(pad_h_ == 0 && pad_w_ == 0 && stride_h_ == 1 && stride_w_ == 1)
       << "With Global_pooling: true; only pad = 0 and stride = 1";
   }
+
+  // 初始化一些参数
   if (pad_h_ != 0 || pad_w_ != 0) {
     CHECK(this->layer_param_.pooling_param().pool()
         == PoolingParameter_PoolMethod_AVE
@@ -87,6 +95,8 @@ void PoolingLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
     kernel_h_ = bottom[0]->height();
     kernel_w_ = bottom[0]->width();
   }
+
+  // pooling之后的height 和 width
   pooled_height_ = static_cast<int>(ceil(static_cast<float>(
       height_ + 2 * pad_h_ - kernel_h_) / stride_h_)) + 1;
   pooled_width_ = static_cast<int>(ceil(static_cast<float>(
@@ -103,17 +113,23 @@ void PoolingLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
     CHECK_LT((pooled_height_ - 1) * stride_h_, height_ + pad_h_);
     CHECK_LT((pooled_width_ - 1) * stride_w_, width_ + pad_w_);
   }
+
+  // 输出top blob 的shape
   top[0]->Reshape(bottom[0]->num(), channels_, pooled_height_,
       pooled_width_);
   if (top.size() > 1) {
     top[1]->ReshapeLike(*top[0]);
   }
+
+  // max pooling 反向求导时要用到取最大值的位置，max_idx_就是记录pooling过程中取max value 的index ，它是一个int型的blob 和输出top具有相同的shape
   // If max pooling, we will initialize the vector index part.
   if (this->layer_param_.pooling_param().pool() ==
       PoolingParameter_PoolMethod_MAX && top.size() == 1) {
     max_idx_.Reshape(bottom[0]->num(), channels_, pooled_height_,
         pooled_width_);
   }
+
+  // 类似于max pooling
   // If stochastic pooling, we will initialize the random index part.
   if (this->layer_param_.pooling_param().pool() ==
       PoolingParameter_PoolMethod_STOCHASTIC) {
@@ -150,6 +166,7 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
         } 
         else 
         {
+            //（*1）设为负无穷
             mask = max_idx_.mutable_cpu_data();
             caffe_set(top_count, -1, mask);
         }
@@ -166,6 +183,7 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 
                     for (int pw = 0; pw < pooled_width_; ++pw) 
                     {
+                        // 这四个量给出未pooling矩阵中确定pooling区域的两个顶点。
                         int hstart = ph * stride_h_ - pad_h_;
                         int wstart = pw * stride_w_ - pad_w_;
                         int hend = min(hstart + kernel_h_, height_);
@@ -174,6 +192,8 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                         wstart = max(wstart, 0);
                         const int pool_index = ph * pooled_width_ + pw;
 
+                        // caffe 数据存储是一维数组的形式
+                        // ph为pooling后输出top的height index，pool_index为对应一维数组index。
                         for (int h = hstart; h < hend; ++h) 
                         {
 
@@ -182,16 +202,19 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                             {
                                 const int index = h * width_ + w;
 
+                                // 对应一维数组的index
                                 if (bottom_data[index] > top_data[pool_index]) 
                                 {
                                     top_data[pool_index] = bottom_data[index];
 
+                                    // 由（*1）可知该循环将bottom中pooling区域（kernel的大小）的最大值放到对应top
                                     if (use_top_mask) 
                                     {
                                         top_mask[pool_index] = static_cast<Dtype>(index);
                                     } 
                                     else 
                                     {
+                                        // 记录top得到的max value在bottom中的index
                                         mask[pool_index] = index;
                                     }
                                 }
@@ -211,6 +234,7 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                 } 
                 else 
                 {
+                    // 取下一个channel的mask
                     mask += top[0]->offset(0, 1);
                 }
             }
@@ -221,6 +245,7 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 
         for (int i = 0; i < top_count; ++i) 
         {
+            // 将top初始化为0
             top_data[i] = 0;
         }
         
@@ -233,6 +258,7 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                 {
                     for (int pw = 0; pw < pooled_width_; ++pw) 
                     {
+                        // pooling 区域的element个数
                         int hstart = ph * stride_h_ - pad_h_;
                         int wstart = pw * stride_w_ - pad_w_;
                         int hend = min(hstart + kernel_h_, height_ + pad_h_);
@@ -248,11 +274,13 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                             // 核范围内算平均
                             for (int w = wstart; w < wend; ++w) 
                             {
+                                // 将pooling区域的element个数加起来
                                 top_data[ph * pooled_width_ + pw] +=
                                     bottom_data[h * width_ + w];
                             }
                         }
                         
+                        // 求平均值
                         top_data[ph * pooled_width_ + pw] /= pool_size;
                     }
                 }
@@ -284,6 +312,8 @@ void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     return;
   }
   const Dtype* top_diff = top[0]->cpu_diff();
+
+  // 初始化bottom_diff 为0
   Dtype* bottom_diff = bottom[0]->mutable_cpu_diff();
   // Different pooling methods. We explicitly do the switch outside the for
   // loop to save time, although this results in more codes.
@@ -307,11 +337,15 @@ void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
             const int index = ph * pooled_width_ + pw;
             const int bottom_index =
                 use_top_mask ? top_mask[index] : mask[index];
+
+            // 计算“敏感值”分布
             bottom_diff[bottom_index] += top_diff[index];
           }
         }
         // 采样层输出的残传播给输入。由于是最大采样方法，输出存的都是输入范围内最大的值，所以残差传播的时候也只有范围内最大的值受影响
         bottom_diff += bottom[0]->offset(0, 1);
+
+        // 指向下一个channel
         top_diff += top[0]->offset(0, 1);
         if (use_top_mask) {
           top_mask += top[0]->offset(0, 1);
@@ -336,9 +370,13 @@ void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
             wstart = max(wstart, 0);
             hend = min(hend, height_);
             wend = min(wend, width_);
+
+            // 遍历pooling区域
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
+
                 // 采样层输出的残差传播给输入，由于是平均采样，所以权重都是
+                // 反向传播时各层间“误差敏感”总和不变，所以对应每个值需要平摊
                 bottom_diff[h * width_ + w] +=
                   top_diff[ph * pooled_width_ + pw] / pool_size;
               }
@@ -347,6 +385,8 @@ void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
         }
         // offset
         bottom_diff += bottom[0]->offset(0, 1);
+
+        // 指向下一个channel
         top_diff += top[0]->offset(0, 1);
       }
     }
