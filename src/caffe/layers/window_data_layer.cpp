@@ -504,7 +504,7 @@ void WindowDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
                            * mean_width + w + mean_off + pad_w;
               top_data[top_index] = (pixel - mean[mean_index]) * scale;
             } else {
-              if (this->has_mean_values_) {
+              if (this->has_mean_values_) 
                 {// 有均值则减去均值  
                 top_data[top_index] = (pixel - this->mean_values_[c]) * scale;
               } else {
