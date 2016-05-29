@@ -125,7 +125,7 @@ static vector<string> LayerTypeList() {
 };
 
 
-3-6此外还定义了一个层注册器
+// 3-6此外还定义了一个层注册器
 // LayerRegisterer  
 // 自己定义层的注册器  
 // 以供后面的宏进行使用  
