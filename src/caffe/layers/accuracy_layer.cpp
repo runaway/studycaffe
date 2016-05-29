@@ -4,7 +4,7 @@
 
 #include "caffe/layers/accuracy_layer.hpp"
 #include "caffe/util/math_functions.hpp"
-
+// 比较简单，需要注意的一点是，在训练自己的数据的时候，label应该从0开始
 namespace caffe {
 
 template <typename Dtype>
@@ -51,6 +51,7 @@ void AccuracyLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   const Dtype* bottom_data = bottom[0]->cpu_data();
   const Dtype* bottom_label = bottom[1]->cpu_data();
   const int dim = bottom[0]->count() / outer_num_;
+  // 1000类就是1000
   const int num_labels = bottom[0]->shape(label_axis_);
   vector<Dtype> maxval(top_k_+1);
   vector<int> max_id(top_k_+1);
@@ -68,6 +69,8 @@ void AccuracyLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       }
       if (top.size() > 1) ++nums_buffer_.mutable_cpu_data()[label_value];
       DCHECK_GE(label_value, 0);
+
+      //训练自己的数据，类别必须从0开始
       DCHECK_LT(label_value, num_labels);
       // Top-k accuracy
       std::vector<std::pair<Dtype, int> > bottom_data_vector;
@@ -75,6 +78,7 @@ void AccuracyLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
         bottom_data_vector.push_back(std::make_pair(
             bottom_data[i * dim + k * inner_num_ + j], k));
       }
+      //排序 取top_k
       std::partial_sort(
           bottom_data_vector.begin(), bottom_data_vector.begin() + top_k_,
           bottom_data_vector.end(), std::greater<std::pair<Dtype, int> >());

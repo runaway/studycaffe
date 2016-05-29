@@ -166,11 +166,13 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
         } 
         else 
         {
+            // 模板类Blob的mutable_cpu_diff()方法中使用了强制类型转换static_cast<Dtype*>()  
             //（*1）设为负无穷
             mask = max_idx_.mutable_cpu_data();
             caffe_set(top_count, -1, mask);
         }
         
+        // FLT_MAX在头文件#include <cfloat>中定义 
         caffe_set(top_count, Dtype(-FLT_MAX), top_data);
 
         // The main loop
@@ -189,8 +191,10 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                         int hend = min(hstart + kernel_h_, height_);
                         int wend = min(wstart + kernel_w_, width_);
                         hstart = max(hstart, 0);
-                        wstart = max(wstart, 0);
-                        const int pool_index = ph * pooled_width_ + pw;
+                        wstart = max(wstart, 0); // 一般情况下从0开始，而不是从负下标开始 
+
+                        // 池化后的（输出）特征图中元素的位置索引   
+                        const int pool_index = ph * pooled_width_ + pw; 
 
                         // caffe 数据存储是一维数组的形式
                         // ph为pooling后输出top的height index，pool_index为对应一维数组index。
@@ -200,6 +204,7 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                             // 找出核范围内最大
                             for (int w = wstart; w < wend; ++w) 
                             {
+                                // 输入特征图中元素的位置索引 
                                 const int index = h * width_ + w;
 
                                 // 对应一维数组的index
@@ -214,6 +219,7 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                                     } 
                                     else 
                                     {
+                                        // 每次Max_pooling操作最大元素的位置索引  
                                         // 记录top得到的max value在bottom中的index
                                         mask[pool_index] = index;
                                     }
@@ -222,7 +228,10 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                         }
                     }
                 }
-        
+
+                // 每次通过offset来确定新的bottom_data地址，offset()函数返回的其
+                // 实仅仅是一个整数，大小为一个channel的元素的个数。也就是这样一
+                // 个channel一个channel得遍历整个Blob。  
                 // 指针移动到下一个channel。注意代码这里的位置。采样是针对每个channel的。
                 // compute offset
                 bottom_data += bottom[0]->offset(0, 1);
@@ -308,11 +317,14 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 template <typename Dtype>
 void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
+
+  // propagate_down的妙处于此！caffe.proto里面也有一个相同名字的定义      
   if (!propagate_down[0]) {
     return;
   }
   const Dtype* top_diff = top[0]->cpu_diff();
 
+  // 模板类Blob的mutable_cpu_diff()方法中使用了强制类型转换static_cast<Dtype*>()    
   // 初始化bottom_diff 为0
   Dtype* bottom_diff = bottom[0]->mutable_cpu_diff();
   // Different pooling methods. We explicitly do the switch outside the for
@@ -328,12 +340,14 @@ void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     if (use_top_mask) {
       top_mask = top[1]->cpu_data();
     } else {
+    //取数据成员max_idx_的地址  
       mask = max_idx_.cpu_data();
     }
     for (int n = 0; n < top[0]->num(); ++n) {
       for (int c = 0; c < channels_; ++c) {
         for (int ph = 0; ph < pooled_height_; ++ph) {
           for (int pw = 0; pw < pooled_width_; ++pw) {
+            //这里的index是前向传播池化后的特征图中元素的位置索引  
             const int index = ph * pooled_width_ + pw;
             const int bottom_index =
                 use_top_mask ? top_mask[index] : mask[index];

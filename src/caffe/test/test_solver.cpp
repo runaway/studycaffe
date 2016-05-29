@@ -42,7 +42,10 @@ class SolverTest : public MultiDeviceTest<TypeParam> {
 };
 
 TYPED_TEST_CASE(SolverTest, TestDtypesAndDevices);
-
+/*
+test_interval:interval是区间的意思，所有该参数表示：训练的时候，每迭代500次就进行一次测试。
+caffe在训练的过程是边训练边测试的。训练过程中每500次迭代（也就是32000个训练样本参与了计算，batchsize为64），计算一次测试误差。计算一次测试误差就需要包含所有的测试图片（这里为10000），这样可以认为在一个epoch里，训练集中的所有样本都遍历以一遍，但测试集的所有样本至少要遍历一次，至于具体要多少次，也许不是整数次，这就要看代码，大致了解下这个过程就可以了。
+*/
 TYPED_TEST(SolverTest, TestInitTrainTestNets) {
   const string& proto =
      "test_interval: 10 "

@@ -26,11 +26,19 @@ void ReLULayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   const int count = bottom[0]->count();
   Dtype negative_slope = this->layer_param_.relu_param().negative_slope();
   for (int i = 0; i < count; ++i) {
+    // 输入大于零斜率为1，小于0斜率为negative_slope。
     top_data[i] = std::max(bottom_data[i], Dtype(0))
         + negative_slope * std::min(bottom_data[i], Dtype(0));
   }
 }
+/*
+关于Backward_cpu()作几点说明： 
+propagate_down：在caffe.proto里有一段说明：Specifies on which bottoms the backpropagation should be skipped.The size must be either 0 or equal to the number of bottoms. propagate_down是与计算关于bottom的梯度相关的。大家在通常的理解上，求梯度都是相对于参数weights而言的，但是，在caffe里为什么还有求“bottom的导数”一说呢？？？原因在于caffe的实现。公式（1）中，δ(l)其实就是损失函数关于当前层的输入（bottom）的偏导数，而这个 propagate_down则是计算这个δ(l)的控制条件，由公式就可以知道，这个δ(l)在caffe的BP实现中是非常重要。
 
+caffe中BP的实现： caffe的模块化非常强，它将W与X的线性求和，激励函数以及pooling都分开了，也就是说caffe里的conv_layer只是一个线性求和运算，并没有激励运算，而且分别对应了caffe里的conv_layer, Relu_layer, 以及pooling_layer。与公式（3）对应，我们以Relu_layer为例来说明一下caffe的BP实现，公式中的δ(l+1)其实与top_diff对应，δ(l)其实与bottom_diff对应。而top_diff = top[0]->cpu_diff()，bottom_diff = bottom[0]->mutable_cpu_diff()，又因为Relu_layer并没有weight（卷积核），所以公式（3）化简为δ(l)=δ(l+1)?f′(z(l))， δ(l+1)来自上一层,f′(z(l))与代码中的for循环语句块对应。而对于conv_layer，公式（3）化简为δ(l)=(W(l))Tδ(l+1)，可以查看ConvolutionLayer::Backward_cpu()以验证。对应于公式（4），求的是关于weights卷积核的梯度，a(l)与当前卷积层的bottom相关。总之，基于caffe的高度模块性，其BP实现的梯度有关于bottom的，也有关于weights的。
+
+公式（2）其实是公式（1）中J取EuclideanLoss的特例，(y?a(nl))就是top_diff。基于此，可以理解happynear大神所说的：CNN特征 = FP（输入图像）， diff = 原始特征 - CNN特征， loss = lossfunction（diff），新的grad=BP（loss）
+*/
 template <typename Dtype>
 void ReLULayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     const vector<bool>& propagate_down,

@@ -1,1 +1,14 @@
----- 为solver类的数据成员param_赋值 Matches (0 in 0 files) ----
+---- ReadProtoFromTextFile Matches (13 in 5 files) ----
+Io.cpp (src\caffe\util):bool ReadProtoFromTextFile(const char* filename, Message* proto) {
+Io.cpp (src\caffe\util):// 和ReadProtoFromTextFile功能相反  
+Io.hpp (include\caffe\util):bool ReadProtoFromTextFile(const char* filename, Message* proto);  
+Io.hpp (include\caffe\util):inline bool ReadProtoFromTextFile(const string& filename, Message* proto) {  
+Io.hpp (include\caffe\util):  return ReadProtoFromTextFile(filename.c_str(), proto);  
+Io.hpp (include\caffe\util):inline void ReadProtoFromTextFileOrDie(const char* filename, Message* proto) {  
+Io.hpp (include\caffe\util):  CHECK(ReadProtoFromTextFile(filename, proto));  
+Io.hpp (include\caffe\util):inline void ReadProtoFromTextFileOrDie(const string& filename, Message* proto) {  
+Io.hpp (include\caffe\util):  ReadProtoFromTextFileOrDie(filename.c_str(), proto);  
+Upgrade_net_proto_text.cpp (tools):  if (!ReadProtoFromTextFile(input_filename, &net_param)) {
+Upgrade_proto.cpp (src\caffe\util):  CHECK(ReadProtoFromTextFile(param_file, param))
+Upgrade_proto.cpp (src\caffe\util):  CHECK(ReadProtoFromTextFile(param_file, param))
+Upgrade_solver_proto_text.cpp (tools):  if (!ReadProtoFromTextFile(input_filename, &solver_param)) {

@@ -19,6 +19,8 @@ void LossLayer<Dtype>::Reshape(
   CHECK_EQ(bottom[0]->num(), bottom[1]->num())
       << "The data and label should have the same number.";
   vector<int> loss_shape(0);  // Loss layers output a scalar; 0 axes.
+
+  // 输出top是一个标量。
   top[0]->Reshape(loss_shape);
 }
 

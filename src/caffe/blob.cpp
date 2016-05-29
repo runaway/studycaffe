@@ -6,6 +6,77 @@
 #include "caffe/syncedmem.hpp"
 #include "caffe/util/math_functions.hpp"
 
+/*
+Blob作为Caffe的四大模块之一，负责完成CPU/GPU存储申请、同步和数据持久化映射。Caffe内部数据存储和通讯都是通过Blob来完成，Blob提供统一的存储操作接口，可用来保存训练数据、模型参数等。Blob是一个高维连续数组，批处理图像数据时通常使用4维Blob，Blob的维度可以表示为(N, K, H, W)，每个维度的意思分别是：
+N: 数据的个数，例如SGD时一次mini-batch的图像个数。
+K: 如果是图像，可以理解为通道数量；如果是网络中间结果，就是feature map的数量。
+H, W： 如果是图像数据，可以理解为图像的高度和宽度；如果是参数数据，可以理解为滤波核的高度和宽度。
+Caffe中通常只使用4维Blob完成图像应用，但是Blob完全可以合理地被用来存储任何数据，比如说学习到的参数。例如：
+1000幅640*480 RGBD图像数据，其Blob形状为(1000, 4, 480, 640)。
+96个大小11*11的滤波核，处理16通道的输入数据，其参数Blob的形状为(96，16，11，11)。
+1000个输出，1024个输入的全连接层，其参数Blob的形状为(1000，1024)。
+Blob是基础的数据结构，是用来保存学习到的参数以及网络传输过程中产生数据的类。在更高一级的Layer中Blob用下面的形式表示学习到的参数：vector<shared_ptr<Blob<Dtype> > > blobs_。
+
+
+blob.hpp主要定义了一个Blob类。
+首先看一下数据成员：
+protected：
+shared_ptr<SyncedMemory> data_; //shared_ptr应该为commom.hpp里引用的“using boost::shared_ptr”,
+shared_ptr<SyncedMemory> diff_; //SyncedMemory类封装了CPU/GPU内存申请、同步和释放
+shared_ptr<SyncedMemory> shape_data_;
+vector<int> shape_;//shape_是Blob维度参数
+int count_;//count表示Blob存储的元素个数（shape_所有元素乘积）
+int capacity_;//capacity_表示当前Blob的元素个数（控制动态分配）
+
+
+构造函数:
+默认构造函数完成最基本的初始化，两个显示构造函数会调用Reshape函数完成data_和diff_的共享内存对象SyncedMemory的申请。
+Reshape函数：
+void Reshape(const vector<int>& shape);//主要完成数据成员shape_,shape_data_,count_,capacity_，data_，diff_最基本的初始化工作，主要包括内存分配，含初始化。
+void Reshape(const BlobShape& shape);//特别是完成data_，diff_的共享内存对象SyncedMemory的申请。
+
+Blob的数据访问方法：
+const Dtype* cpu_data() const;
+const Dtype* gpu_data() const;
+Dtype* mutable_cpu_data();
+Dtype* mutable_gpu_data();
+diff类似。Blob定义了两种数据访问方式：const方式只读，不允许改写数据；mutable方式可改写数据（对diff_的访问也是类似的）。以cpu_data()为例，看看数据访问是怎样完成的。
+//In blob.cpp
+template <typename Dtype>
+const Dtype* Blob<Dtype>::cpu_data() const {
+  CHECK(data_);
+  return (const Dtype*)data_->cpu_data();
+}//data_是指向SyncedMemory类的智能指针，所以这里调用的是SyncedMemory类的cpu_data()方法.注意两个函数同名，但是属于不同类的方法。
+转向syncedmem.cpp
+//In syncedmem.cpp
+const void* SyncedMemory::cpu_data() {
+  to_cpu();//首先完成数据同步，第一次访问时会申请存储空间
+  return (const void*)cpu_ptr_;//返回内存指针--->void* cpu_ptr_;//In syncedmem.hpp内存指针 --->syncedmem.hpp里的几个数据成员如下：
+}
+======================SyncedMemory.hpp部分数据成员=============================
+private：
+void to_cpu(); //数据由显存同步到内存
+void to_gpu(); //数据由内存同步到显存
+void* cpu_ptr_; //内存指针
+void* gpu_ptr_; //显存指针
+size_t size_; //数据大小
+SyncedHead head_; //当前数据状态，UNINITIALIZED, HEAD_AT_CPU, HEAD_AT_GPU, SYNCED
+bool own_cpu_data_; //是否分配了内存空间
+总结一下：Blob想要访问data_数据，由于Blob不关心细节，它会调用SyncedMemory的数据访问函数cpu_data()，由SyncedMemory的函数cpu_data()完成数据的同步并返回数据指针cpu_ptr_。
+
+总结
+Caffe中Blob封装了各种存储相关的操作，包括内存显存分配、同步、数据访问、数据读写磁盘等。它将作为基本数据模块被包含到Layer和Net中，后面将分析他们是如何被Layer和Net使用的。
+*/
+
+/*
+为什么有的地方需要data copy ,有点地方不需要？？
+首先需明确：
+.gpu_data and .cpu_data are used in cases were the data is used only as input and will not be modified by the algorithm. .mutable_* is used when the data itself gets updated while running the algorithm.
+
+其次，需要关注（1）对数据Blob的两次操作是否采用相同的处理器(processor),（2）之前的一次操作是否有可能更新数据Blob
+
+Whenever a the data is called, it checks whether the previous statement was a mutable_* function call and that too using the same processor (gpu or cpu). If it is using the same processor, data need not be copied. If it is using the other processor, there is a chance that the data might have been updated in the previous .mutable_* call and hence a data copy is required.
+*/
 namespace caffe {
 
 // reshape 的具体实现  
@@ -179,6 +250,11 @@ void Blob<Dtype>::ShareDiff(const Blob& other) {
   CHECK_EQ(count_, other.count());  
   diff_ = other.diff();  
 }  
+
+/*
+参数更新函数----Update方法：
+Blob还有一个参数更新函数也很重要Update, 它会被网络中存储参数的Blob调用，完成梯度下降过程中的参数更新。注意注释里说的“parameter blobs”，所以是针对存储参数的Blob进行参数更新。
+*/
   
 // The "update" method is used for parameter blobs in a Net, which are stored  
 // as Blob<float> or Blob<double> -- hence we do not define it for  
@@ -201,7 +277,8 @@ CopyFrom(const Blob& source, bool copy_diff, bool reshape)
 如果是拷贝diff：调用memcpy函数将source的diff拷贝过来 
 否则拷贝data
 */
-  
+
+// 核心计算就是梯度下降更新。  
 // Update是计算data=-1 * diff + data  
 template <typename Dtype>  
 void Blob<Dtype>::Update() {  
@@ -215,7 +292,7 @@ void Blob<Dtype>::Update() {
     // 存储的时候用到了mutable_cpu_data，防止其他线程访问  
     caffe_axpy<Dtype>(count_, Dtype(-1),  
         static_cast<const Dtype*>(diff_->cpu_data()),  
-        static_cast<Dtype*>(data_->mutable_cpu_data()));  
+        static_cast<Dtype*>(data_->mutable_cpu_data()));  //调用math_function.cpp中的模板函数caffe_axpy，它封装了cblas_saxpy函数，实际上就是2个向量的相加，具体网址https://developer.apple.com/library/mac/documentation/Accelerate/Reference/BLAS_Ref/#//apple_ref/c/func/cblas_saxpy
     break;  
   case SyncedMemory::HEAD_AT_GPU:  
   case SyncedMemory::SYNCED:  
@@ -521,7 +598,7 @@ void Blob<Dtype>::CopyFrom(const Blob& source, bool copy_diff, bool reshape) {
     LOG(FATAL) << "Unknown caffe mode.";  
   }  
 }  
-
+//FromProto将BlobProto的shape,data,diff分别copy到Blob的shape_,data_,diff_,完成数据解析。
 /*
 功能：从proto读数据进来，其实就是反序列化 
 步骤：1.先把blob的大小改变一下 
@@ -584,6 +661,11 @@ void Blob<Dtype>::FromProto(const BlobProto& proto, bool reshape) {
 }  
 
 /*
+Blob的数据持久化函数：
+Blob中存储了网络的中间处理结果和网络的参数，这些数据最终是要被存储到磁盘或从磁盘读入内存的，最后来看Blob的数据持久化函数是如何完成数据读写磁盘的。Caffe就是借助Google Protocol Buffers这个数据序列化和持久化库来完成的。
+*/
+
+/*
 功能：把网络的参数存入prototxt中 
 步骤： 
 1. 设置网络的名字：param->set_name(name_) 
@@ -608,6 +690,8 @@ void Blob<double>::ToProto(BlobProto* proto, bool write_diff) const {
   
   proto->clear_double_data();  
   proto->clear_double_diff();  
+
+  // 调用Blob自己的cpu_data方法获取data_,然后拷贝
   // 存data  
   const double* data_vec = cpu_data();  
   for (int i = 0; i < count_; ++i) {  
@@ -615,11 +699,12 @@ void Blob<double>::ToProto(BlobProto* proto, bool write_diff) const {
   }  
   // 存diff  
   if (write_diff) {  
+    //调用Blob自己的cpu_diff方法获取diff_,然后拷贝
     const double* diff_vec = cpu_diff();  
     for (int i = 0; i < count_; ++i) {  
       proto->add_double_diff(diff_vec[i]);  
     }  
-  }  
+  }  //ToProto将Blob的shape_,data_,diff_分别copy到BlobProto的shape,data,diff,完成序列化.
 }  
   
 template <>  

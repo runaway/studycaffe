@@ -18,7 +18,7 @@
 #include "caffe/common.hpp"
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/util/io.hpp"
-
+// io.cpp 主要定义了一些读取图像或者文件，以及它们之间的一些转化的函数。
 const int kProtoReadBytesLimit = INT_MAX;  // Max size of 2 GB minus 1 byte.
 
 namespace caffe {
@@ -31,18 +31,32 @@ using google::protobuf::io::ZeroCopyOutputStream;
 using google::protobuf::io::CodedOutputStream;
 using google::protobuf::Message;
 
+/*
+最后数据持久化函数由Protocol Buffers的工具实现，详见io.hpp
+// in io.hpp
+bool ReadProtoFromTextFile(const char* filename, Message* proto);
+bool ReadProtoFromBinaryFile(const char* filename, Message* proto);
+void WriteProtoToTextFile(const Message& proto, const char* filename);
+void WriteProtoToBinaryFile(const Message& proto, const char* filename);
+其中，数据可以text和binary两种格式被持久化。
+*/
+
 // 从文件读取Proto的txt文件  
-bool ReadProtoFromTextFile(const char* filename, Message* proto) {  
+bool ReadProtoFromTextFile(const char* filename, Message* proto) {
+//打开文件
   int fd = open(filename, O_RDONLY);  
   CHECK_NE(fd, -1) << "File not found: " << filename;  
+  //新建一个FileInputStream对象 input
   FileInputStream* input = new FileInputStream(fd);  
+
+  //解析input文件中的Message， 即使文件中参数定义顺序与Message中的参数定义顺序不一致，也可以解析。
   // 注意如何使用protobuf去读取  
   bool success = google::protobuf::TextFormat::Parse(input, proto);  
   delete input;  
   close(fd);  
   return success;  
 }  
-  
+// 和ReadProtoFromTextFile功能相反  
 // 将proto写入到txt文件  
 void WriteProtoToTextFile(const Message& proto, const char* filename) {  
   int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);  
@@ -52,16 +66,18 @@ void WriteProtoToTextFile(const Message& proto, const char* filename) {
   delete output;  
   close(fd);  
 }  
-  
+// 从二进制文件中读取message 参数  
 // 从bin读取proto的定义  
 bool ReadProtoFromBinaryFile(const char* filename, Message* proto) {  
+//读取二进制文件
   int fd = open(filename, O_RDONLY);  
   CHECK_NE(fd, -1) << "File not found: " << filename;  
   ZeroCopyInputStream* raw_input = new FileInputStream(fd);  
   //  解码流com.google.protobuf.CodedInputStream  
   CodedInputStream* coded_input = new CodedInputStream(raw_input);  
+  // 建立CodedInputStream类的对象coded_input
   coded_input->SetTotalBytesLimit(kProtoReadBytesLimit, 536870912);  
-  
+  //折设置最大字节限制
   bool success = proto->ParseFromCodedStream(coded_input);  
   
   delete coded_input;  
@@ -69,21 +85,22 @@ bool ReadProtoFromBinaryFile(const char* filename, Message* proto) {
   close(fd);  
   return success;  
 }  
-  
+//和ReadProtoFromBinaryFile功能相反 
 // 将proto写入到bin文件  
 void WriteProtoToBinaryFile(const Message& proto, const char* filename) {  
   fstream output(filename, ios::out | ios::trunc | ios::binary);  
   CHECK(proto.SerializeToOstream(&output));  
 }  
-  
+// 以cvMat格式读入图像  
 #ifdef USE_OPENCV  
 // 将图像读取到CVMat，指定图像大小，是否彩色  
-cv::Mat ReadImageToCVMat(const string& filename,  
+cv::Mat ReadImageToCVMat(const string& filename,  //is_color 为1读入彩色图像，0灰度图
     const int height, const int width, const bool is_color) {  
+    //height，width都不为0则把图像resize 到height*width
   cv::Mat cv_img;  
   int cv_read_flag = (is_color ? CV_LOAD_IMAGE_COLOR :  
     CV_LOAD_IMAGE_GRAYSCALE);  
-  cv::Mat cv_img_origin = cv::imread(filename, cv_read_flag);  
+  cv::Mat cv_img_origin = cv::imread(filename, cv_read_flag);  //读入图像
   if (!cv_img_origin.data) {  
     LOG(ERROR) << "Could not open or find file " << filename;  
     return cv_img_origin;  
@@ -95,28 +112,35 @@ cv::Mat ReadImageToCVMat(const string& filename,
   }  
   return cv_img;  
 }  
-  
+// 重载函数，提供各种不同的功能 
+//重载函数，读入彩色图
 cv::Mat ReadImageToCVMat(const string& filename,  
     const int height, const int width) {  
   return ReadImageToCVMat(filename, height, width, true);  
 }  
-  
+  //重载函数，读入图像但不resize
 cv::Mat ReadImageToCVMat(const string& filename,  
     const bool is_color) {  
   return ReadImageToCVMat(filename, 0, 0, is_color);  
 }  
-  
+ //重载函数，读入彩色图像且不resize 
 cv::Mat ReadImageToCVMat(const string& filename) {  
   return ReadImageToCVMat(filename, 0, 0, true);  
 }  
-  
+
+// 匹配文件后缀名  
 // Do the file extension and encoding match?  
 // 看看是不是jpg还是jpeg的图像  
 static bool matchExt(const std::string & fn,  
                      std::string en) {  
+  //p 为文件名中“.”所在位置的索引
   size_t p = fn.rfind('.');  
+
+  //ext为文件后缀名".xxx"
   std::string ext = p != fn.npos ? fn.substr(p) : fn;  
   std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);  
+
+    //把ext中的大写字母转化小写字母
   std::transform(en.begin(), en.end(), en.begin(), ::tolower);  
   if ( ext == en )  
     return true;  
@@ -145,6 +169,7 @@ bool ReadImageToDatum(const string& filename, const int label,
       datum->set_encoded(true);  
       return true;  
     }  
+    //cvmat转为Datum格式
     CVMatToDatum(cv_img, datum);  
     datum->set_label(label);  
     return true;  
@@ -155,13 +180,16 @@ bool ReadImageToDatum(const string& filename, const int label,
 #endif  // USE_OPENCV  
 // 从文件读取数据到Datum  
 bool ReadFileToDatum(const string& filename, const int label,  
-    Datum* datum) {  
+    Datum* datum) { 
+    //获取文件指针位置 size
   std::streampos size;  
   
   fstream file(filename.c_str(), ios::in|ios::binary|ios::ate);  
   if (file.is_open()) {  
+    //代表当前get 流指针的位置
     size = file.tellg();  
-    std::string buffer(size, ' ');  
+    std::string buffer(size, ' ');
+    //设置0输入文件流的起始位置
     file.seekg(0, ios::beg);  
     file.read(&buffer[0], size);  
     file.close();  
@@ -196,10 +224,13 @@ cv::Mat DecodeDatumToCVMat(const Datum& datum, bool is_color) {
   std::vector<char> vec_data(data.c_str(), data.c_str() + data.size());  
   int cv_read_flag = (is_color ? CV_LOAD_IMAGE_COLOR :  
     CV_LOAD_IMAGE_GRAYSCALE);  
+
+    //从内存读入图片
   cv_img = cv::imdecode(vec_data, cv_read_flag);// flag为用户指定的  
   if (!cv_img.data) {  
     LOG(ERROR) << "Could not decode datum ";  
   }  
+  //将encode 的Datum转化为cvMat
   return cv_img;  
 }  
   
@@ -214,7 +245,7 @@ bool DecodeDatumNative(Datum* datum) {
     return false;  
   }  
 }  
-  
+//将encodedDatum转化为没有encode的Datum  
 // 将Datum进行解码  
 bool DecodeDatum(Datum* datum, bool is_color) {  
   if (datum->encoded()) {  
@@ -229,6 +260,7 @@ bool DecodeDatum(Datum* datum, bool is_color) {
 // 将CVMat转换到Datum  
 void CVMatToDatum(const cv::Mat& cv_img, Datum* datum) {  
   CHECK(cv_img.depth() == CV_8U) << "Image data type must be unsigned byte";  
+  //分别设置channel， height，width
   datum->set_channels(cv_img.channels());  
   datum->set_height(cv_img.rows);  
   datum->set_width(cv_img.cols);  
@@ -239,8 +271,10 @@ void CVMatToDatum(const cv::Mat& cv_img, Datum* datum) {
   int datum_height = datum->height();  
   int datum_width = datum->width();  
   int datum_size = datum_channels * datum_height * datum_width;  
+  //将buffer初始化为字符''的datum_size个副本 
   std::string buffer(datum_size, ' ');  
-  for (int h = 0; h < datum_height; ++h) {  
+  for (int h = 0; h < datum_height; ++h) { 
+    //指向图像第h行的指针
     const uchar* ptr = cv_img.ptr<uchar>(h);  
     int img_index = 0;  
     for (int w = 0; w < datum_width; ++w) {  
