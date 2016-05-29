@@ -82,4 +82,4 @@ REGISTER_LAYER_CLASS(HDF5Output);
   
 }  // namespace caffe  
 
-}  // namespace caffe
+//}  // namespace caffe
