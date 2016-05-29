@@ -3,7 +3,7 @@
 
 namespace caffe {
 
-template <typename Dtype>
+// template <typename Dtype>
 // ≥ı ºªØª•≥‚¡ø  
 template <typename Dtype>  
 void Layer<Dtype>::InitMutex() {  
