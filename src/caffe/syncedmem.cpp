@@ -6,7 +6,7 @@ namespace caffe {
 // 析构函数就是释放内存  
 SyncedMemory::~SyncedMemory() {  
   if (cpu_ptr_ && own_cpu_data_) {  
-    CaffeFreeHost(cpu_ptr_);  
+    CaffeFreeHost(cpu_ptr_, 0);  
   }  
   
 #ifndef CPU_ONLY// 只要不是定义的CPU_ONLY的编译模式  
