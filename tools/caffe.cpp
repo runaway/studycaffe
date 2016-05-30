@@ -47,12 +47,24 @@ DEFINE_string(sigint_effect, "stop",
 DEFINE_string(sighup_effect, "snapshot",
              "Optional; action to take when a SIGHUP signal is received: "
              "snapshot, stop or none.");
-
+/*
+（3）g_brew_map实现过程，首先通过 typedef定义函数指针
+typedef int (*BrewFunction)();
+这个是用typedef定义函数指针方法。这个程序定义一个BrewFunction函数指针类型，
+在caffe.cpp 中 BrewFunction 作为GetBrewFunction()函数的返回类型，可以是 train()，test()，device_query()，time() 这四个函数指针的其中一个。在train()，test()，中可以调用solver类的函数，从而进入到net，进入到每一层，运行整个caffe程序。
+*/
 // A simple registry for caffe commands.
 typedef int (*BrewFunction)();
+
+/*
+（4）g_brew_map定义
+typedef std::map<caffe::string, BrewFunction> BrewMap;// 因为输入参数可能为train，test，device_query，time，所以定义一个容器类型，
+*/
 typedef std::map<caffe::string, BrewFunction> BrewMap;
 BrewMap g_brew_map;
 
+// （5） g_brew_map 初始化
+// 这个作用和#define RegisterBrewFunction(func) g_brew_map[#func]=&func;  这个宏定义功能类似，其中，func可以为：train，test，device_query，time。
 #define RegisterBrewFunction(func) \
 namespace { \
 class __Registerer_##func { \
@@ -64,8 +76,11 @@ class __Registerer_##func { \
 __Registerer_##func g_registerer_##func; \
 }
 
+// （2）GetBrewFunction（）函数定义如下，其返回BrewFunction函数指针。
 static BrewFunction GetBrewFunction(const caffe::string& name) {
+// 判断输入的是不是g_brew_map中train，test，device_query，time中一个，
   if (g_brew_map.count(name)) {
+    // 如果是的话，就调用相应的train(),test()，device_query()，time()
     return g_brew_map[name];
   } else {
     LOG(ERROR) << "Available caffe actions:";
@@ -77,6 +92,8 @@ static BrewFunction GetBrewFunction(const caffe::string& name) {
     return NULL;  // not reachable, just to suppress old compiler warnings.
   }
 }
+
+// caffe中定义了train()，test()，device_query()，time()四种方式。  如果需要，咱们可以增加其他的方式，然后通过RegisterBrewFunction() 函数注册一下即可。    
 
 // Parse GPU ids or use all available devices
 static void get_gpus(vector<int>* gpus) {
@@ -431,6 +448,8 @@ int main(int argc, char** argv) {
       "  time            benchmark model execution time");
   // Run tool or show usage.
   caffe::GlobalInit(&argc, &argv);
+
+  // （1）main()函数中，输入的train，test，device_query，time。 通过下面两行进入程序。
   if (argc == 2) {
 #ifdef WITH_PYTHON_LAYER
     try {

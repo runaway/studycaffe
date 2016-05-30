@@ -192,6 +192,8 @@ class Net {
   inline const vector<Blob<Dtype>*>& learnable_params() const {
     return learnable_params_;
   }
+
+  // 学习速率和权重衰减;  
   /// @brief returns the learnable parameter learning rate multipliers
   inline const vector<float>& params_lr() const { return params_lr_; }
   inline const vector<bool>& has_params_lr() const { return has_params_lr_; }
@@ -228,6 +230,7 @@ class Net {
   bool has_blob(const string& blob_name) const;
 
   // 功能：给一个blob的名字，返回这个blob的指针
+  // 判断是否存在名字为blob_name的blob；
   const shared_ptr<Blob<Dtype> > blob_by_name(const string& blob_name) const;
 
   // 功能：判断是否存在名字为layer_name的layer
@@ -277,33 +280,63 @@ class Net {
   vector<string> layer_names_;
   map<string, int> layer_names_index_;
   vector<bool> layer_need_backward_;
+
+  //blobs_存储的是中间结果，是针对整个网络中所有非参数blob而设计的一个变量。我觉得params_存储的也是中间结果  
   /// @brief the blobs storing intermediate results between the layer.
   vector<shared_ptr<Blob<Dtype> > > blobs_;
+
+  //整个网络中，所有非参数blob的name。  
   vector<string> blob_names_;
   map<string, int> blob_names_index_;
+
+  //整个网络中，所有非参数blob，是否需要backward。注意，这里所说的所有非参数blob其实指的是AppendTop函数中遍历的所有top blob,并不是每一层的top+bottom,因为这一层的top就是下一层的bottom,网络是一层一层堆起来的。  
   vector<bool> blob_need_backward_;
+
+  // 存储整个网络所有网络层的bottom blob指针,实际上存储的是前一层的top，因为网络是一层一层堆起来的  
   /// bottom_vecs stores the vectors containing the input for each layer.
   /// They don't actually host the blobs (blobs_ does), so we simply store
   /// pointers.
   vector<vector<Blob<Dtype>*> > bottom_vecs_;
+
+  // 存储整个网络所有网络层的bottom blob的ID 
   vector<vector<int> > bottom_id_vecs_;
+
+  // 整个网络所有网络层的bottom blob是否需要backward  
   vector<vector<bool> > bottom_need_backward_;
+
+  // 存储整个网络所有网络层的top blob指针.  
   /// top_vecs stores the vectors containing the output for each layer
   vector<vector<Blob<Dtype>*> > top_vecs_;
+
+  // 存储整个网络所有网络层的top blob的ID.top_id_vecs_中存储的最基本元素是blob_id ——> 每一个新的blob都会赋予其一个blob_id,top_vecs_则与之对应，但是这个blob_id可能是会有重复的（因为in-place）  
   vector<vector<int> > top_id_vecs_;
+
+  // 每次遍历一个layer的时候，都会resize blob_loss_weights_, 然后调用模板类layer的loss函数返回loss_weight  
   /// Vector of weight in the loss (or objective) function of each net blob,
   /// indexed by blob_id.
   vector<Dtype> blob_loss_weights_;
+
+  //存储的基本元素是net_param_id，每遍历一个参数blob,net_param_id和param_id_vecs_都会更新 
   vector<vector<int> > param_id_vecs_;
+
+  // 是一个存储parameter "onwer"的一个向量  ——> -1 表示当前Layer就是该parameter的"owner" 
   vector<int> param_owners_;
   vector<string> param_display_names_;
+
+  //其元素为当layer_id 与当前param_id 组成的pair.vector<pair<int, int> > param_layer_indices_  
   vector<pair<int, int> > param_layer_indices_;
+
+  //是整个网络的参数non-empty name与index的映射。注意，这个name是ParamSpec 类型中的name。  
   map<string, int> param_names_index_;
+
+  // 整个网络的输入输出blob以及ID
   /// blob indices for the input and the output of the net
   vector<int> net_input_blob_indices_;
   vector<int> net_output_blob_indices_;
   vector<Blob<Dtype>*> net_input_blobs_;
   vector<Blob<Dtype>*> net_output_blobs_;
+
+  //整个网络的参数blob。 !!!不管这个参数有没有non-emty name，是否参与share
   /// The parameters in the network.
   vector<shared_ptr<Blob<Dtype> > > params_;
   vector<Blob<Dtype>*> learnable_params_;

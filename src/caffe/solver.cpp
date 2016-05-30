@@ -9,6 +9,7 @@
 #include "caffe/util/io.hpp"
 #include "caffe/util/upgrade_proto.hpp"
 
+// 主要实现了一个模板类solver,而且是个抽象类。
 namespace caffe {
 
 template<typename Dtype>

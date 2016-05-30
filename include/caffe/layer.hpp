@@ -10,7 +10,20 @@
 #include "caffe/layer_factory.hpp"
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/util/math_functions.hpp"
-
+/*
+主要定义了一个模板类Layer
+首先，看一下数据成员，主要有：
+protected：
+LayerParameter layer_param_ ： The protobuf that stores the layer parameters——caffe.proto文件里定义的message,相应的caffe.pb.h里定义的一个类。
+Phase phase_  ：The phase: TRAIN or TEST——Phase是caffe.pb.h里定义的一个枚举类型
+vector<shared_ptr<Blob<Dtype> > > blobs_ ：The vector that stores the learnable parameters as a set of blobs——所定义的向量blobs_里存储的是指向Blob<Dtyp>的智能指针，Blob<Dtype>里面存储的是learnable parameter, 使用向量是因为weight和bias是分开保存再两个blob中。
+vector<bool> param_propagate_down_ ： Vector indicating whether to compute the diff of each param blob——决定是否为param blob计算梯度diff，标志每个top blob是否需要计算反向传递的梯度值。
+vector<Dtype> loss_ ： The vector that indicates whether each top blob has a non-zero weight in the objective function——决定每个top blob 在 objective function是否non-zero weigh，即Losslayer中表示每个top blob计算的loss的权重。
+private：
+bool is_shared_ ： Whether this layer is actually shared by other nets
+shared_ptr<boost::mutex> forward_mutex_ ： The mutex（互斥锁） for sequential forward if this layer is shared
+然后看一下成员函数：
+*/
 // 其中layer.hpp是抽象出来的基类，其他都是在其基础上的继承，也即剩下的五个头文件和上图中的五个部分。
 
 /**
@@ -45,7 +58,7 @@ SetUp函数需要根据实际的参数设置进行实现，对各种类型的参数初始化；Forward和Backwa
 // 用从protobuf 读入message LayerParameter 中的blobs 初始化 blobs_ 
 // blobs_定义：vector<shared_ptr<Blob<Dtype> > > blobs_
 
-    
+  // 显式的构造函数不需要重写，任何初始工作在SetUp()中完成;构造方法只是获取phase值，并且如果层说明参数(layer_param_)中提供了权值和偏置参数，也复制。    
   /**
    * You should not implement your own constructor. Any set up code should go
    * to SetUp(), where the dimensions of the bottom blobs are provided to the
@@ -56,36 +69,53 @@ SetUp函数需要根据实际的参数设置进行实现，对各种类型的参数初始化；Forward和Backwa
       // Set phase and copy blobs (if there are any).
       // 训练还是测试？phase  
       phase_ = param.phase();
+
+      // 在message Layerparameter中，<code>repeated BlobProto blobs</code>表示的是"The blobs containing the numeric parameters of the layer",  
+      // 也就是说，在Layer中，blob存储的是参数numeric parameters，（当然参数也可以算是一种数据了，毕竟Blob是用来存储数据的）而Layer的input bottom blob以及output top blob 里面存放的才是我们通常所说的数据数据。
       if (layer_param_.blobs_size() > 0) {
         // 将blobs_的大小设置为参数中的大小  
         blobs_.resize(layer_param_.blobs_size());
         for (int i = 0; i < layer_param_.blobs_size(); ++i) {
+          //blobs_的元素是指向Blob<Dtype>的智能指针,需要注意的是这句代码采用的是成员运算符，下一句代码使用的是箭头运算符。reset是因为数据类型Dtype可能会发生变化  
           // 新建若干个Blob  
           blobs_[i].reset(new Blob<Dtype>());
 
+          //调用的是Blob类型的FromProto函数    
           // 从blob文件中获取数据  
           blobs_[i]->FromProto(layer_param_.blobs(i));
-        }
+        } //读取的是权值和偏置参数  
       }
     }
   virtual ~Layer() {}
 
+/** 
+   * @brief Implements common layer setup functionality. 
+   *        实现每个layer对象的setup函数 
+   * 
+   * @param bottom the preshaped input blobs 
+   *        层的输入数据，blob中的存储空间已申请 
+   * @param top 
+   *     the allocated but unshaped output blobs, to be shaped by Reshape 
+   *     层的输出数据，blob对象已构造但是其中的存储空间未申请，具体在Reshape函数现实现 
+   * 
+   * Checks that the number of bottom and top blobs is correct. 
+   * Calls LayerSetUp to do special layer setup for individual layer types, 
+   * followed by Reshape to set up sizes of top blobs and internal buffers. 
+   * S<strong>ets up the loss weight multiplier blobs for any non-zero loss weights</strong>. 
+   * This method may not be overridden. 
+   * 初始化构造函数SetUp 
+   * 1. 检查输入输出blob个数是否满足要求，每个层能处理的输入输出数据不一样 
+   * 2. 调用LayerSetUp函数初始化特殊的层，每个Layer子类需重写这个函数完成定制的初始化 
+   * 3. 调用Reshape函数为top blob分配合适大小的存储空间 
+   * 4. 为每个top blob设置loss weight multiplier blobs(损失权重乘子blobs)，非LossLayer的top blob的loss weight值为零.<strong>---!!!Sets up the loss weight multiplier blobs for any non-zero loss weights!!!---</strong> 
+   * 
+   * 此方法非虚函数，不用重写，模式固定 
+   */  
+
 // SetUp设置层的互斥量、检查BLOB的参数、调用LayerSetUp进行初始化  
 // LayerSetUp是一个虚函数，用户可以去重载它。  
 // 然后再设置topblob的形状以及设置损失权重。 
-  /**
-   * @brief Implements common layer setup functionality.
-   *
-   * @param bottom the preshaped input blobs
-   * @param top
-   *     the allocated but unshaped output blobs, to be shaped by Reshape
-   *
-   * Checks that the number of bottom and top blobs is correct.
-   * Calls LayerSetUp to do special layer setup for individual layer types,
-   * followed by Reshape to set up sizes of top blobs and internal buffers.
-   * Sets up the loss weight multiplier blobs for any non-zero loss weights.
-   * This method may not be overridden.
-   */
+
   void SetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
       // 初始化互斥量  
@@ -99,23 +129,28 @@ SetUp函数需要根据实际的参数设置进行实现，对各种类型的参数初始化；Forward和Backwa
        // 设置损失权重  
     SetLossWeights(top);
   }
+/** 
+   * @brief Does layer-specific setup: your layer should implement this function 
+   *        as well as Reshape. 
+   *        定制初始化，每个子类layer必须实现此虚函数！！！ 
+   * 
+   * @param bottom 
+   *     the preshaped input blobs, whose data fields store the input data for 
+   *     this layer 
+   *     输入blob, 数据成员data_和diff_存储了相关数据 
+   * @param top 
+   *     the allocated but unshaped output blobs 
+   *     输出blob, blob对象已构造但数据成员的空间尚未申请 
+   * 
+   * This method should do one-time layer specific setup. This includes reading 
+   * and processing relevent parameters from the <code>layer_param_</code>. 
+   * Setting up the shapes of top blobs and internal buffers should be done in 
+   * <code>Reshape</code>, which will be called before the forward pass to 
+   * adjust the top blob sizes. 
+   * 此方法执行一次定制化的层初始化，包括从layer_param_读入并处理相关的层权值和偏置参数， 
+   * 调用Reshape函数申请top blob的存储空间 
+   */  
 
-  /**
-   * @brief Does layer-specific setup: your layer should implement this function
-   *        as well as Reshape.
-   *
-   * @param bottom
-   *     the preshaped input blobs, whose data fields store the input data for
-   *     this layer
-   * @param top
-   *     the allocated but unshaped output blobs
-   *
-   * This method should do one-time layer specific setup. This includes reading
-   * and processing relevent parameters from the <code>layer_param_</code>.
-   * Setting up the shapes of top blobs and internal buffers should be done in
-   * <code>Reshape</code>, which will be called before the forward pass to
-   * adjust the top blob sizes.
-   */
   virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {}
 
@@ -144,19 +179,21 @@ SetUp函数需要根据实际的参数设置进行实现，对各种类型的参数初始化；Forward和Backwa
         << type() << "Layer does not support sharing.";
     is_shared_ = is_shared;
   }
+/** 
+   * @brief Adjust the shapes of top blobs and internal buffers to accommodate 
+   *        the shapes of the bottom blobs. 
+   * 
+   * @param bottom the input blobs, with the requested input shapes 
+   * @param top the top blobs, which should be reshaped as needed 
+   * 
+   * This method should reshape top blobs as needed according to the shapes 
+   * of the bottom (input) blobs, as well as reshaping any internal buffers 
+   * and making any other necessary adjustments so that the layer can 
+   * accommodate the bottom blobs. 
+   *  
+   * <strong>-----reshape top blobs 以及 internal buffers以适应bottom (input) blobs-----bottom和top都有多个blob</strong> 
+   */  
 
-  /**
-   * @brief Adjust the shapes of top blobs and internal buffers to accommodate
-   *        the shapes of the bottom blobs.
-   *
-   * @param bottom the input blobs, with the requested input shapes
-   * @param top the top blobs, which should be reshaped as needed
-   *
-   * This method should reshape top blobs as needed according to the shapes
-   * of the bottom (input) blobs, as well as reshaping any internal buffers
-   * and making any other necessary adjustments so that the layer can
-   * accommodate the bottom blobs.
-   */
   virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) = 0;
 
@@ -490,12 +527,15 @@ SetUp函数需要根据实际的参数设置进行实现，对各种类型的参数初始化；Forward和Backwa
 而我们知道Forward_cpu是纯虚函数，必须要实现而Forward_gpu是虚函数，如果不实现就调用 Forward_cpu函数了。
 前传（你必须实现自己的Forward_cpu，实现Forward_gpu是可选的）
 */
+/** 
+   * Called by SetUp to initialize the weights associated with any top blobs in 
+   * the loss function. Store non-zero loss weights in the diff blob. 
+   * 初始化损失权重---<strong>为每个top blob设置loss weight multiplier blobs(损失权重乘子blobs)</strong>，非LossLayer的top blob的loss weight值为零 
+   * <strong>=====!!!! Store non-zero loss weights in the diff blob !!!!=====</strong> 
+   */  
 
-  /**
-   * Called by SetUp to initialize the weights associated with any top blobs in
-   * the loss function. Store non-zero loss weights in the diff blob.
-   */
   inline void SetLossWeights(const vector<Blob<Dtype>*>& top) {
+  //message Layerparameter中的<code>repeated float loss_weight = 5;</code>表示的是“The amount of weight to assign each top blob in the objective”</strong></em>  
     const int num_loss_weights = layer_param_.loss_weight_size();
     if (num_loss_weights) {
       CHECK_EQ(top.size(), num_loss_weights) << "loss_weight must be "
@@ -503,9 +543,15 @@ SetUp函数需要根据实际的参数设置进行实现，对各种类型的参数初始化；Forward和Backwa
       for (int top_id = 0; top_id < top.size(); ++top_id) {
         const Dtype loss_weight = layer_param_.loss_weight(top_id);
         if (loss_weight == Dtype(0)) { continue; }
+
+        //修改Layer的数据成员loss_,其存储的是loss_weight</em>  
         this->set_loss(top_id, loss_weight);
         const int count = top[top_id]->count();
+
+        //返回指向某块Blob的diff所对应的内存空间的指针，并且由于mutable_cpu_diff返回的是void*指针，so，还有一个类型转换过程  
         Dtype* loss_multiplier = top[top_id]->mutable_cpu_diff();
+
+        //loss_multiplier是一个void指针，caffe_set函数表示用loss_weight初始化这块内存，<span style="font-family: Arial, Helvetica, sans-serif;">使其能够存储count个loss_weight(when loss_weight!=0),if loss_weight=0,则用0值来初始化.-----这里为blob的每个元素都初始化了一个loss_weight, 那么在后面计算loss时，只要sum(top)就可以了（我觉得是这样，后面的代码还没看）
         caffe_set(count, loss_weight, loss_multiplier);
       }
     }
@@ -534,10 +580,12 @@ SetUp函数需要根据实际的参数设置进行实现，对各种类型的参数初始化；Forward和Backwa
 
   DISABLE_COPY_AND_ASSIGN(Layer);
 };  // class Layer
+// Forward and backward wrappers. You should implement the cpu and  
+// gpu specific implementations instead, and should not change these  
+// functions.  
+// 有一点需要记住的是：在模板类Layer的forward函数里面，会再次调用调用Reshape()函数，也就是说，即使我们每次迭代每个minibatch里的图像（或者特征）的shape不一致，也没有关系，  
+// 因为在真正调用forward_cpu / forward_gpu 之前都会重新Reshape；SetUp里面的Reshape只是设置了初始的Top blobs 的shape  
 
-// Forward and backward wrappers. You should implement the cpu and
-// gpu specific implementations instead, and should not change these
-// functions.
 template <typename Dtype>  
 inline Dtype Layer<Dtype>::Forward(const vector<Blob<Dtype>*>& bottom,  
     const vector<Blob<Dtype>*>& top) {  
@@ -559,7 +607,9 @@ inline Dtype Layer<Dtype>::Forward(const vector<Blob<Dtype>*>& bottom,
       // 获取前传的数据  
       const Dtype* data = top[top_id]->cpu_data();  
       // 获取梯度（\frac{\partial Loss}{\partial net}）  
-      const Dtype* loss_weights = top[top_id]->cpu_diff();  
+      const Dtype* loss_weights = top[top_id]->cpu_diff(); 
+
+      //这里的loss_weights我觉得应该是SetLossWeights()方法中模板函数caffe_set()所初始化的loss_weight  
       // data与loss_weight的点积，即得损失函数关于当前层权重的偏导了  
     // \frac{\partial Loss}{\partial net} * \frac{\partial net}{\frac{W}}  
     // = \frac{\partial Loss}{\partial W}  
@@ -616,6 +666,7 @@ void Layer<Dtype>::ToProto(LayerParameter* param, bool write_diff) {
   param->CopyFrom(layer_param_);
   param->clear_blobs();
   for (int i = 0; i < blobs_.size(); ++i) {
+    //调用Blob的ToProto方法。param->add_blobs()返回Blobproto*,从而将Blob的shape_,data_,diff_分别copy到BlobProto的shape,data,diff,完成序列化 
     blobs_[i]->ToProto(param->add_blobs(), write_diff);
   }
 }
