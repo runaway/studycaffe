@@ -4,7 +4,36 @@
 
 #include "caffe/layers/accuracy_layer.hpp"
 #include "caffe/util/math_functions.hpp"
+
+// Accuracy完成的任务是统计预测正确样本的个数信息。如总样本N个，正确分类n个，正确率为n/N。
 // 比较简单，需要注意的一点是，在训练自己的数据的时候，label应该从0开始
+
+/*
+主要变量：
+
+label_axis_为标签对应的轴（对应的blob中的那个维度）
+outer_num_总的来说是样本数量，详细解释见后面
+inner_num_同上，总的来说是样本数量，详细解释见后面
+top_k为取前k个最高评分（的预测标签）
+message AccuracyParameter {
+...
+  // The "label" axis of the prediction blob, whose argmax corresponds to the
+  // predicted label -- may be negative to index from the end (e.g., -1 for the
+  // last axis).  For example, if axis == 1 and the predictions are
+  // (N x C x H x W), the label blob is expected to contain N*H*W ground truth
+  // labels with integer values in {0, 1, ..., C-1}.
+  optional int32 axis = 2 [default = 1];
+}
+
+定义中关于axis的说明：
+
+axis指出在预测blob中，哪一维是label轴，如(N x C x H x W)的blob，axis=0，则N为label对应的维度。axis=1,则C为label对应的维度，而剩下的N为outer样本数量， H x W为inner样本数量。
+由代码可知，当axis=k时outer_num_=blob.shape[0,..,k)，inner_num_=blob.shape[k+1,..,shape.size)。
+一般的，label blob的维度为(N x C)，N为样本数量，C为标签数量（即类别个数）。axis=1,outer_num_=N,inner_num_=shape[2,2)=1(即没有inner)
+
+outer_num_ = bottom[0]->count(0, label_axis_);
+inner_num_ = bottom[0]->count(label_axis_ + 1);
+*/
 namespace caffe {
 
 template <typename Dtype>

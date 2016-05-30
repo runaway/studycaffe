@@ -3,6 +3,7 @@
 #include "caffe/layers/split_layer.hpp"
 #include "caffe/util/math_functions.hpp"
 
+// 其功能主要是复制blob，将一个bottom blob复制成多个top blob
 namespace caffe {
 
 template <typename Dtype>

@@ -238,12 +238,14 @@ void Solver<Dtype>::Step(int iters)
     losses_.clear();
     smoothed_loss_ = 0;
 
+    // 10000轮迭代
     // 对于每一次训练时的迭代(遍历整个网络)
     while (iter_ < stop_iter)
     {
         // zero-init the params
         net_->ClearParamDiffs();
 
+        // 每隔500轮进行一次测试
         // test_initialization默认为true 
         if (param_.test_interval() && iter_ % param_.test_interval() == 0
         && (iter_ > 0 || param_.test_initialization())
@@ -271,6 +273,7 @@ void Solver<Dtype>::Step(int iters)
         // 1. 计算loss：loss = net_->ForwardBackward(bottom_vec)其中：
         for (int i = 0; i < param_.iter_size(); ++i) 
         {
+            // 执行反向传播，修改权值
             loss += net_->ForwardBackward();
         }
 
@@ -347,6 +350,7 @@ void Solver<Dtype>::Solve(const char* resume_file)
     LOG(INFO) << "Solving " << net_->name();
     LOG(INFO) << "Learning Rate Policy: " << param_.lr_policy();
 
+    // 每一次solving之前都初始化成false
     // Initialize to false every time we start solving.
     requested_early_exit_ = false;
 
@@ -400,16 +404,27 @@ void Solver<Dtype>::Solve(const char* resume_file)
     
     LOG(INFO) << "Optimization Done.";
 }
-
+/*
+在TestAll()中，调用Test(test_net_id)对每个测试网络test_net（不是训练网络
+train_net）进行测试。在Lenet中，只有一个测试网络，所以只调用一次Test(0)
+进行测试。
+*/
 template <typename Dtype>
-void Solver<Dtype>::TestAll() {
-  for (int test_net_id = 0;
-       test_net_id < test_nets_.size() && !requested_early_exit_;
-       ++test_net_id) {
-    Test(test_net_id);
-  }
+void Solver<Dtype>::TestAll() 
+{
+    for (int test_net_id = 0;
+         test_net_id < test_nets_.size() && !requested_early_exit_;
+         ++test_net_id) 
+    {
+        Test(test_net_id);
+    }
 }
+/*
+Test()函数里面做了两件事：
 
+前向计算网络，得到网络损失，见 （Caffe，LeNet）前向计算（五）
+通过测试网络的第11层accuracy层，与第12层loss层结果统计accuracy与loss信息。
+*/
 template <typename Dtype>
 void Solver<Dtype>::Test(const int test_net_id) 
 {
@@ -525,7 +540,7 @@ void Solver<Dtype>::Test(const int test_net_id)
         const Dtype loss_weight = test_net->blob_loss_weights()[output_blob_index];
         ostringstream loss_msg_stream;
 
-        // 求多次迭代Loss的平均值，也就是求多个batch的平局值，因为一次迭代用的是一个test batch-size 的图片  
+        // 求多次迭代Loss的平均值，也就是求多个batch的平均值，因为一次迭代用的是一个test batch-size 的图片  
         const Dtype mean_score = test_score[i] / param_.test_iter(test_net_id);
 
         if (loss_weight) 
