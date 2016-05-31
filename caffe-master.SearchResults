@@ -1,1 +1,8 @@
----- minst Matches (0 in 0 files) ----
+---- svm Matches (7 in 2 files) ----
+Hinge_loss_layer.hpp (include\caffe\layers): *      the @f$ K = CHW @f$ classes. In an SVM, @f$ t @f$ is the result of
+Hinge_loss_layer.hpp (include\caffe\layers): *      equivalent to an SVM.
+Hinge_loss_layer.hpp (include\caffe\layers): *      (defaults to @f$ p = 1 @f$, the L1 norm; L2 norm, as in L2-SVM,
+Hinge_loss_layer.hpp (include\caffe\layers): * In an SVM, @f$ t \in \mathcal{R}^{N \times K} @f$ is the result of taking
+Hinge_loss_layer.hpp (include\caffe\layers): * HingeLossLayer is equivalent to an SVM (assuming it has no other learned
+Loss_layer.cpp (src\caffe\layers):2. hinge loss(for softmargin svm),J=1/2||w||^2 + sum(max(0,1-yf(w,x)))
+Loss_layer.cpp (src\caffe\layers):hinge_loss，对应hinge_loss_layer，该损失函数就是\ell(y) = \max(0, 1-t \cdot y)。主要用在SVM分类器中。
