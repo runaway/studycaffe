@@ -30,9 +30,12 @@ SolverAction::Enum Solver<Dtype>::GetRequestedAction() {
 // 输入：SolverParameter类型的param
 template <typename Dtype>
 Solver<Dtype>::Solver(const SolverParameter& param, const Solver* root_solver)
-    : net_(), callbacks_(), root_solver_(root_solver),
-      requested_early_exit_(false) {
-  Init(param);
+    : net_(), 
+      callbacks_(), 
+      root_solver_(root_solver),
+      requested_early_exit_(false) 
+{
+    Init(param);
 }
 
 // 初始化两个Net类，net_和test_net_，并调用Init()函数 
@@ -97,6 +100,7 @@ void Solver<Dtype>::InitTrainNet()
   CHECK_LE(num_train_nets, 1) << "SolverParameter must not contain more than "
       << "one of these fields specifying a train_net: " << field_names;
   NetParameter net_param;
+  
   if (param_.has_train_net_param()) {
     LOG_IF(INFO, Caffe::root_solver())
         << "Creating training net specified in train_net_param.";
@@ -123,21 +127,26 @@ void Solver<Dtype>::InitTrainNet()
   NetState net_state;
   net_state.set_phase(TRAIN);
 
-  // 从低到高获取state,最终从最高优先级SolverParameter类型中的train_state,显然这会覆盖掉之前获取的state。  
+  // 从低到高获取state,最终从最高优先级SolverParameter类型中的train_state,显然这
+  // 会覆盖掉之前获取的state。  
   net_state.MergeFrom(net_param.state());
 
-  // 这里获取的state可以为Netparameter中的state赋值，然后可以根据LayerParameter中的include和exclude来确定该层是否应该包含在网络中。  
+  // 这里获取的state可以为Netparameter中的state赋值，然后可以根据LayerParameter
+  // 中的include和exclude来确定该层是否应该包含在网络中。  
   net_state.MergeFrom(param_.train_state());
 
-  // 这是Initialize train net 的一部分工作。InitTestNets也是如此 
+  // 这是Initialize train net的一部分工作。InitTestNets也是如此 
   net_param.mutable_state()->CopyFrom(net_state);
 
-  if (Caffe::root_solver()) {
-    // 调用模板类的构造函数，进行net的初始化  
-    net_.reset(new Net<Dtype>(net_param));
-  } else {
-    net_.reset(new Net<Dtype>(net_param, root_solver_->net_.get()));
-  }
+    if (Caffe::root_solver()) 
+    {
+        // 调用模板类的构造函数，进行net的初始化  
+        net_.reset(new Net<Dtype>(net_param));
+    } 
+    else 
+    {
+        net_.reset(new Net<Dtype>(net_param, root_solver_->net_.get()));
+    }
 }
 
 // 需要注意的是TestNet可以有多个，而TrainNet只能有一个
@@ -158,10 +167,13 @@ void Solver<Dtype>::InitTestNets()
     {
     CHECK_GE(param_.test_iter_size(), num_test_nets)
       << "test_iter must be specified for each test network.";
-    } else {
+    } 
+    else 
+    {
     CHECK_EQ(param_.test_iter_size(), num_test_nets)
       << "test_iter must be specified for each test network.";
     }
+    
     // If we have a generic net (specified by net or net_param, rather than
     // test_net or test_net_param), we may have an unlimited number of actual
     // test networks -- the actual number is given by the number of remaining
@@ -170,62 +182,89 @@ void Solver<Dtype>::InitTestNets()
     // 可以有多个test net  
     const int num_generic_net_instances = param_.test_iter_size() - num_test_nets;
 
-    // num_test_net_instances由num_test_nets和num_generic_net_instances组成，实际上也就是param_.test_iter_size()  
+    // num_test_net_instances由num_test_nets和num_generic_net_instances组成，
+    // 实际上也就是param_.test_iter_size()  
     const int num_test_net_instances = num_test_nets + num_generic_net_instances;
-    if (param_.test_state_size()) {
-    CHECK_EQ(param_.test_state_size(), num_test_net_instances)
-    << "test_state must be unspecified or specified once per test net.";
+
+    if (param_.test_state_size()) 
+    {
+        CHECK_EQ(param_.test_state_size(), num_test_net_instances)
+        << "test_state must be unspecified or specified once per test net.";
     }
-    if (num_test_net_instances) {
-    CHECK_GT(param_.test_interval(), 0);
+    
+    if (num_test_net_instances) 
+    {
+        CHECK_GT(param_.test_interval(), 0);
     }
+    
     int test_net_id = 0;
     vector<string> sources(num_test_net_instances);
     vector<NetParameter> net_params(num_test_net_instances);
-    for (int i = 0; i < num_test_net_params; ++i, ++test_net_id) {
-    sources[test_net_id] = "test_net_param";
-    net_params[test_net_id].CopyFrom(param_.test_net_param(i));
+
+    for (int i = 0; i < num_test_net_params; ++i, ++test_net_id) 
+    {
+        sources[test_net_id] = "test_net_param";
+        net_params[test_net_id].CopyFrom(param_.test_net_param(i));
     }
-    for (int i = 0; i < num_test_net_files; ++i, ++test_net_id) {
-    sources[test_net_id] = "test_net file: " + param_.test_net(i);
-    ReadNetParamsFromTextFileOrDie(param_.test_net(i),
-      &net_params[test_net_id]);
+    
+    for (int i = 0; i < num_test_net_files; ++i, ++test_net_id) 
+    {
+        sources[test_net_id] = "test_net file: " + param_.test_net(i);
+        ReadNetParamsFromTextFileOrDie(param_.test_net(i),
+          &net_params[test_net_id]);
     }
+    
     const int remaining_test_nets = param_.test_iter_size() - test_net_id;
-    if (has_net_param) {
-    for (int i = 0; i < remaining_test_nets; ++i, ++test_net_id) {
-    sources[test_net_id] = "net_param";
-    net_params[test_net_id].CopyFrom(param_.net_param());
+
+    if (has_net_param) 
+    {
+        for (int i = 0; i < remaining_test_nets; ++i, ++test_net_id) 
+        {
+            sources[test_net_id] = "net_param";
+            net_params[test_net_id].CopyFrom(param_.net_param());
+        }
     }
+    
+    if (has_net_file) 
+    {
+        for (int i = 0; i < remaining_test_nets; ++i, ++test_net_id) 
+        {
+            sources[test_net_id] = "net file: " + param_.net();
+            ReadNetParamsFromTextFileOrDie(param_.net(), &net_params[test_net_id]);
+        }
     }
-    if (has_net_file) {
-    for (int i = 0; i < remaining_test_nets; ++i, ++test_net_id) {
-    sources[test_net_id] = "net file: " + param_.net();
-    ReadNetParamsFromTextFileOrDie(param_.net(), &net_params[test_net_id]);
-    }
-    }
+    
     test_nets_.resize(num_test_net_instances);
-    for (int i = 0; i < num_test_net_instances; ++i) {
-    // Set the correct NetState.  We start with the solver defaults (lowest
-    // precedence); then, merge in any NetState specified by the net_param
-    // itself; finally, merge in any NetState specified by the test_state
-    // (highest precedence).
-    NetState net_state;
-    net_state.set_phase(TEST);
-    net_state.MergeFrom(net_params[i].state());
-    if (param_.test_state_size()) {
-    net_state.MergeFrom(param_.test_state(i));
-    }
-    net_params[i].mutable_state()->CopyFrom(net_state);
-    LOG(INFO)
-    << "Creating test net (#" << i << ") specified by " << sources[i];
-    if (Caffe::root_solver()) {
-    test_nets_[i].reset(new Net<Dtype>(net_params[i]));
-    } else {
-    test_nets_[i].reset(new Net<Dtype>(net_params[i],
-      root_solver_->test_nets_[i].get()));
-    }
-    test_nets_[i]->set_debug_info(param_.debug_info());
+    
+    for (int i = 0; i < num_test_net_instances; ++i) 
+    {
+        // Set the correct NetState.  We start with the solver defaults (lowest
+        // precedence); then, merge in any NetState specified by the net_param
+        // itself; finally, merge in any NetState specified by the test_state
+        // (highest precedence).
+        NetState net_state;
+        net_state.set_phase(TEST);
+        net_state.MergeFrom(net_params[i].state());
+        
+        if (param_.test_state_size()) 
+        {
+            net_state.MergeFrom(param_.test_state(i));
+        }
+        net_params[i].mutable_state()->CopyFrom(net_state);
+        LOG(INFO)
+        << "Creating test net (#" << i << ") specified by " << sources[i];
+        
+        if (Caffe::root_solver()) 
+        {
+            test_nets_[i].reset(new Net<Dtype>(net_params[i]));
+        } 
+        else 
+        {
+            test_nets_[i].reset(new Net<Dtype>(net_params[i],
+            root_solver_->test_nets_[i].get()));
+        }
+        
+        test_nets_[i]->set_debug_info(param_.debug_info());
     }
 }
 
@@ -248,8 +287,8 @@ void Solver<Dtype>::Step(int iters)
         // 每隔500轮进行一次测试
         // test_initialization默认为true 
         if (param_.test_interval() && iter_ % param_.test_interval() == 0
-        && (iter_ > 0 || param_.test_initialization())
-        && Caffe::root_solver()) 
+         && (iter_ > 0 || param_.test_initialization())
+         && Caffe::root_solver()) 
         {
             TestAll();
 
@@ -284,31 +323,42 @@ void Solver<Dtype>::Step(int iters)
         // 3. 输出 losses_
         // average the loss across iterations for smoothed reporting
         UpdateSmoothedLoss(loss, start_iter, average_loss);
-        if (display) {
-        LOG_IF(INFO, Caffe::root_solver()) << "Iteration " << iter_
-          << ", loss = " << smoothed_loss_;
-        const vector<Blob<Dtype>*>& result = net_->output_blobs();
-        int score_index = 0;
-        for (int j = 0; j < result.size(); ++j) {
-        const Dtype* result_vec = result[j]->cpu_data();
-        const string& output_name =
-            net_->blob_names()[net_->output_blob_indices()[j]];
-        const Dtype loss_weight =
-            net_->blob_loss_weights()[net_->output_blob_indices()[j]];
-        for (int k = 0; k < result[j]->count(); ++k) {
-          ostringstream loss_msg_stream;
-          if (loss_weight) {
-            loss_msg_stream << " (* " << loss_weight
+
+        if (display) 
+        {
+            LOG_IF(INFO, Caffe::root_solver()) << "Iteration " << iter_
+              << ", loss = " << smoothed_loss_;
+            const vector<Blob<Dtype>*>& result = net_->output_blobs();
+            int score_index = 0;
+            
+            for (int j = 0; j < result.size(); ++j) 
+            {
+                const Dtype* result_vec = result[j]->cpu_data();
+                const string& output_name =
+                    net_->blob_names()[net_->output_blob_indices()[j]];
+                const Dtype loss_weight =
+                    net_->blob_loss_weights()[net_->output_blob_indices()[j]];
+                
+                for (int k = 0; k < result[j]->count(); ++k) 
+                {
+                    ostringstream loss_msg_stream;
+                    
+                    if (loss_weight) 
+                    {
+                        loss_msg_stream << " (* " << loss_weight
                             << " = " << loss_weight * result_vec[k] << " loss)";
-          }
-          LOG_IF(INFO, Caffe::root_solver()) << "    Train net output #"
-              << score_index++ << ": " << output_name << " = "
-              << result_vec[k] << loss_msg_stream.str();
+                    }
+                    
+                    LOG_IF(INFO, Caffe::root_solver()) << "    Train net output #"
+                    << score_index++ << ": " << output_name << " = "
+                    << result_vec[k] << loss_msg_stream.str();
+                    }
+            }
         }
-        }
-        }
-        for (int i = 0; i < callbacks_.size(); ++i) {
-        callbacks_[i]->on_gradients_ready();
+        
+        for (int i = 0; i < callbacks_.size(); ++i) 
+        {
+            callbacks_[i]->on_gradients_ready();
         }
 
         // 2. 调用ComputeUpdateValue函数:ComputeUpdateValue() 
@@ -325,13 +375,18 @@ void Solver<Dtype>::Step(int iters)
         if ((param_.snapshot()
          && iter_ % param_.snapshot() == 0
          && Caffe::root_solver()) ||
-         (request == SolverAction::SNAPSHOT)) {
-        Snapshot();
+         (request == SolverAction::SNAPSHOT)) 
+        {
+            // 输出当前网络状态到一个文件中
+            Snapshot();
         }
-        if (SolverAction::STOP == request) {
-        requested_early_exit_ = true;
-        // Break out of training loop.
-        break;
+        
+        if (SolverAction::STOP == request) 
+        {
+            requested_early_exit_ = true;
+
+            // Break out of training loop.
+            break;
         }
     }
 }
@@ -540,7 +595,7 @@ void Solver<Dtype>::Test(const int test_net_id)
         const Dtype loss_weight = test_net->blob_loss_weights()[output_blob_index];
         ostringstream loss_msg_stream;
 
-        // 求多次迭代Loss的平均值，也就是求多个batch的平均值，因为一次迭代用的是一个test batch-size 的图片  
+        // 求多次迭代Loss的平均值,也就是求多个batch的平均值,因为一次迭代用的是一个test batch-size的图片  
         const Dtype mean_score = test_score[i] / param_.test_iter(test_net_id);
 
         if (loss_weight) 

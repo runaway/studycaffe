@@ -83,7 +83,7 @@ class BaseConvolutionLayer : public Layer<Dtype> {
   int top_dim_; // 输出维度 = 输出通道数 * 输出h * 输出w  
 
   int channel_axis_; // 输入图像的第几个轴是通道 
-  int num_;
+  int num_; // batchsize  
   int channels_; // 输入图像的通道数  
   int group_; // 卷积组的大小 
   int out_spatial_dim_; // 输出空间维度 = 卷积之后的图像长*卷积之后图像的宽  
@@ -163,7 +163,7 @@ class BaseConvolutionLayer : public Layer<Dtype> {
   int conv_in_channels_; // 卷积的输入通道数 （即输入图像的通道数） 
   int conv_out_spatial_dim_; // 卷积的输出的空间维度 = 卷积后图像h*卷积后图像w  
   int kernel_dim_; // 卷积核的维度 = 输入图像的维度*卷积核的h*卷积核的w  
-  int col_offset_; // 在使用gropu参数的时候使用的offset  
+  int col_offset_; // 在使用group参数的时候使用的offset  
   int output_offset_;
 
   Blob<Dtype> col_buffer_; // im2col的时候使用的存储空间  

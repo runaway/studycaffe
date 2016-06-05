@@ -117,46 +117,67 @@ void SGDSolver<Dtype>::ClipGradients() {
 }
 
 template <typename Dtype>
-void SGDSolver<Dtype>::ApplyUpdate() {
-  CHECK(Caffe::root_solver());
-  Dtype rate = GetLearningRate();
-  if (this->param_.display() && this->iter_ % this->param_.display() == 0) {
-    LOG(INFO) << "Iteration " << this->iter_ << ", lr = " << rate;
-  }
-  ClipGradients();
-  for (int param_id = 0; param_id < this->net_->learnable_params().size();
-       ++param_id) {
-    Normalize(param_id);
-    Regularize(param_id);
-    ComputeUpdateValue(param_id, rate);
-  }
-  this->net_->Update();
+void SGDSolver<Dtype>::ApplyUpdate() 
+{
+    CHECK(Caffe::root_solver());
+    Dtype rate = GetLearningRate();
+
+    if (this->param_.display() && this->iter_ % this->param_.display() == 0) 
+    {
+        LOG(INFO) << "Iteration " << this->iter_ << ", lr = " << rate;
+    }
+
+    ClipGradients();
+
+    for (int param_id = 0; 
+         param_id < this->net_->learnable_params().size();
+         ++param_id) 
+    {
+        Normalize(param_id);
+        Regularize(param_id);
+
+        // 不同的模型训练方法通过重载函数ComputeUpdateValue( )实现计算update参数的核心功能
+        ComputeUpdateValue(param_id, rate);
+    }
+
+    this->net_->Update();
 }
 
 template <typename Dtype>
-void SGDSolver<Dtype>::Normalize(int param_id) {
-  if (this->param_.iter_size() == 1) { return; }
-  // Scale gradient to counterbalance accumulation.
-  const vector<Blob<Dtype>*>& net_params = this->net_->learnable_params();
-  const Dtype accum_normalization = Dtype(1.) / this->param_.iter_size();
-  switch (Caffe::mode()) {
-  case Caffe::CPU: {
-    caffe_scal(net_params[param_id]->count(), accum_normalization,
+void SGDSolver<Dtype>::Normalize(int param_id) 
+{
+    if (this->param_.iter_size() == 1) 
+    { 
+        return; 
+    }
+    
+    // Scale gradient to counterbalance accumulation.
+    const vector<Blob<Dtype>*>& net_params = this->net_->learnable_params();
+    const Dtype accum_normalization = Dtype(1.) / this->param_.iter_size();
+
+    switch (Caffe::mode()) 
+    {
+    case Caffe::CPU: 
+    {
+        caffe_scal(net_params[param_id]->count(), accum_normalization,
         net_params[param_id]->mutable_cpu_diff());
-    break;
-  }
-  case Caffe::GPU: {
+        break;
+    }
+    
+    case Caffe::GPU: 
+    {
 #ifndef CPU_ONLY
-    caffe_gpu_scal(net_params[param_id]->count(), accum_normalization,
+        caffe_gpu_scal(net_params[param_id]->count(), accum_normalization,
         net_params[param_id]->mutable_gpu_diff());
 #else
-    NO_GPU;
+        NO_GPU;
 #endif
-    break;
-  }
-  default:
-    LOG(FATAL) << "Unknown caffe mode: " << Caffe::mode();
-  }
+        break;
+    }
+    
+    default:
+        LOG(FATAL) << "Unknown caffe mode: " << Caffe::mode();
+    }
 }
 
 template <typename Dtype>
@@ -269,36 +290,43 @@ caffe_axpy调用了cblas_saxpy，即调用了cblas_saxpy
 */
 
 template <typename Dtype>
-void SGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) {
-  const vector<Blob<Dtype>*>& net_params = this->net_->learnable_params();
-  const vector<float>& net_params_lr = this->net_->params_lr();
-  Dtype momentum = this->param_.momentum();
-  Dtype local_rate = rate * net_params_lr[param_id];
-  // Compute the update to history, then copy it to the parameter diff.
-  switch (Caffe::mode()) {
-  case Caffe::CPU: {
-    caffe_cpu_axpby(net_params[param_id]->count(), local_rate,
+void SGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) 
+{
+    const vector<Blob<Dtype>*>& net_params = this->net_->learnable_params();
+    const vector<float>& net_params_lr = this->net_->params_lr();
+    Dtype momentum = this->param_.momentum();
+    Dtype local_rate = rate * net_params_lr[param_id];
+    
+    // Compute the update to history, then copy it to the parameter diff.
+    switch (Caffe::mode()) 
+    {
+    case Caffe::CPU: 
+    {
+        caffe_cpu_axpby(net_params[param_id]->count(), local_rate,
               net_params[param_id]->cpu_diff(), momentum,
               history_[param_id]->mutable_cpu_data());
-    caffe_copy(net_params[param_id]->count(),
+        caffe_copy(net_params[param_id]->count(),
         history_[param_id]->cpu_data(),
         net_params[param_id]->mutable_cpu_diff());
-    break;
-  }
-  case Caffe::GPU: {
+        
+        break;
+    }
+    
+    case Caffe::GPU: 
+    {
 #ifndef CPU_ONLY
-    sgd_update_gpu(net_params[param_id]->count(),
+        sgd_update_gpu(net_params[param_id]->count(),
         net_params[param_id]->mutable_gpu_diff(),
         history_[param_id]->mutable_gpu_data(),
         momentum, local_rate);
 #else
-    NO_GPU;
+        NO_GPU;
 #endif
-    break;
-  }
-  default:
-    LOG(FATAL) << "Unknown caffe mode: " << Caffe::mode();
-  }
+        break;
+        }
+        default:
+        LOG(FATAL) << "Unknown caffe mode: " << Caffe::mode();
+    }
 }
 
 template <typename Dtype>

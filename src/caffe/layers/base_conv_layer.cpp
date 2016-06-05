@@ -6,11 +6,22 @@
 #include "caffe/util/im2col.hpp"
 #include "caffe/util/math_functions.hpp"
 
+
+/*
+卷积层是深度神经网络中的一个重要的层，该层实现了局部感受野，通过这种局部感受野，
+可以有效地降低参数的数目。
+我们将结合caffe来讲解具体是如何实现卷积层的前传和反传的。至于是如何前传和反传的
+原理可以参考Notes on Convolutional Neural Networks，具体请百度或者谷歌，即可下载。
+Caffe中的master分支已经将vision_layers.hpp中的各个层分散到layers中去了，因此如
+果你是主分支的代码，请在include/layers中找BaseConvolutionLayer和ConvolutionLayer
+的头文件的定义。
+*/
 namespace caffe {
 
 template <typename Dtype>
 void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
+  // 神经元并非链接整个输入image，而只是连接局部区域，这个区域叫作局部感受野，它的大小可以理解为 kernel size的大小。
   // Configure the kernel size, padding, stride, and inputs.
   ConvolutionParameter conv_param = this->layer_param_.convolution_param();
   force_nd_im2col_ = conv_param.force_nd_im2col(); // 是否需要强制n维卷积
@@ -45,6 +56,8 @@ void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   for (int i = 0; i < num_spatial_axes_; ++i) {
     CHECK_GT(kernel_shape_data[i], 0) << "Filter dimensions must be nonzero.";
   }
+
+  // 指定过滤器的步长
   // Setup stride dimensions (stride_).
   stride_.Reshape(spatial_dim_blob_shape);
   int* stride_data = stride_.mutable_cpu_data();
@@ -69,6 +82,7 @@ void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       CHECK_GT(stride_data[i], 0) << "Stride dimensions must be nonzero.";
     }
   }
+  // 指定在输入的每一边加上多少个像素
   // Setup pad dimensions (pad_).
   pad_.Reshape(spatial_dim_blob_shape);
   int* pad_data = pad_.mutable_cpu_data();
@@ -138,6 +152,7 @@ void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   for (int i = 0; i < num_spatial_axes_; ++i) {
     weight_shape.push_back(kernel_shape_data[i]);
   }
+  // 指定是否是否开启偏置项
   bias_term_ = this->layer_param_.convolution_param().bias_term();
   vector<int> bias_shape(bias_term_, num_output_);
   if (this->blobs_.size() > 0) {
@@ -165,6 +180,8 @@ void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
     // Initialize and fill the weights:
     // output channels x input channels per-group x kernel height x kernel width
     this->blobs_[0].reset(new Blob<Dtype>(weight_shape));
+
+    // 参数的初始化方法
     shared_ptr<Filler<Dtype> > weight_filler(GetFiller<Dtype>(
         this->layer_param_.convolution_param().weight_filler()));
     weight_filler->Fill(this->blobs_[0].get());
@@ -268,34 +285,40 @@ out_spatial=height_out?width_out
 
 template <typename Dtype>
 void BaseConvolutionLayer<Dtype>::forward_cpu_gemm(const Dtype* input,
-    const Dtype* weights, Dtype* output, bool skip_im2col) {
-  const Dtype* col_buff = input;
-  if (!is_1x1_) {
-    if (!skip_im2col) {
-              // 如果没有1x1卷积，也没有skip_im2col  
-      // 则使用conv_im2col_cpu对使用卷积核滑动过程中的每一个kernel大小的图像块  
-      // 变成一个列向量，形成一个height=kernel_dim_的  
-      // width = 卷积后图像heght*卷积后图像width  
-      conv_im2col_cpu(input, col_buffer_.mutable_cpu_data());
+    const Dtype* weights, Dtype* output, bool skip_im2col) 
+{
+    const Dtype* col_buff = input;
+    
+    if (!is_1x1_) 
+    {
+        if (!skip_im2col) 
+        {
+            // 如果没有1x1卷积，也没有skip_im2col  
+            // 则使用conv_im2col_cpu对使用卷积核滑动过程中的每一个kernel大小的图像块  
+            // 变成一个列向量，形成一个height=kernel_dim_的  
+            // width = 卷积后图像heght*卷积后图像width  
+            conv_im2col_cpu(input, col_buffer_.mutable_cpu_data());
+        }
+        
+        col_buff = col_buffer_.cpu_data();
     }
-    col_buff = col_buffer_.cpu_data();
-  }
 
-  // 使用caffe的cpu_gemm来进行计算 
-  for (int g = 0; g < group_; ++g) {
-            // 分组分别进行计算  
-      // conv_out_channels_ / group_是每个卷积组的输出的channel  
-      // kernel_dim_ = input channels per-group x kernel height x kernel width  
-      // 计算的是output[output_offset_ * g] =  
-      // weights[weight_offset_ * g] X col_buff[col_offset_ * g]  
-      // weights的形状是 [conv_out_channel x kernel_dim_]  
-      // col_buff的形状是[kernel_dim_ x (卷积后图像高度乘以卷积后图像宽度)]  
-      // 所以output的形状自然就是conv_out_channel X (卷积后图像高度乘以卷积后图像宽度)  
-    caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, conv_out_channels_ /
-        group_, conv_out_spatial_dim_, kernel_dim_,
+    // 使用caffe的cpu_gemm来进行计算 
+    for (int g = 0; g < group_; ++g) 
+    {
+        // 分组分别进行计算  
+        // conv_out_channels_ / group_是每个卷积组的输出的channel  
+        // kernel_dim_ = input channels per-group x kernel height x kernel width  
+        // 计算的是output[output_offset_ * g] =  
+        // weights[weight_offset_ * g] X col_buff[col_offset_ * g]  
+        // weights的形状是 [conv_out_channel x kernel_dim_]  
+        // col_buff的形状是[kernel_dim_ x (卷积后图像高度乘以卷积后图像宽度)]  
+        // 所以output的形状自然就是conv_out_channel X (卷积后图像高度乘以卷积后图像宽度)  
+        caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, 
+        conv_out_channels_ / group_, conv_out_spatial_dim_, kernel_dim_,
         (Dtype)1., weights + weight_offset_ * g, col_buff + col_offset_ * g,
         (Dtype)0., output + output_offset_ * g);
-  }
+    }
 }
 
 // 把计算卷积中的bias加上。

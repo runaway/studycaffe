@@ -1,8 +1,18 @@
----- svm Matches (7 in 2 files) ----
-Hinge_loss_layer.hpp (include\caffe\layers): *      the @f$ K = CHW @f$ classes. In an SVM, @f$ t @f$ is the result of
-Hinge_loss_layer.hpp (include\caffe\layers): *      equivalent to an SVM.
-Hinge_loss_layer.hpp (include\caffe\layers): *      (defaults to @f$ p = 1 @f$, the L1 norm; L2 norm, as in L2-SVM,
-Hinge_loss_layer.hpp (include\caffe\layers): * In an SVM, @f$ t \in \mathcal{R}^{N \times K} @f$ is the result of taking
-Hinge_loss_layer.hpp (include\caffe\layers): * HingeLossLayer is equivalent to an SVM (assuming it has no other learned
-Loss_layer.cpp (src\caffe\layers):2. hinge loss(for softmargin svm),J=1/2||w||^2 + sum(max(0,1-yf(w,x)))
-Loss_layer.cpp (src\caffe\layers):hinge_loss，对应hinge_loss_layer，该损失函数就是\ell(y) = \max(0, 1-t \cdot y)。主要用在SVM分类器中。
+---- callbacks_ Matches (9 in 2 files) ----
+Solver.cpp (src\caffe):    : net_(), callbacks_(), root_solver_(root_solver),
+Solver.cpp (src\caffe):    : net_(), callbacks_(), root_solver_(root_solver),
+Solver.cpp (src\caffe):        for (int i = 0; i < callbacks_.size(); ++i) 
+Solver.cpp (src\caffe):            callbacks_[i]->on_start();
+Solver.cpp (src\caffe):        for (int i = 0; i < callbacks_.size(); ++i) 
+Solver.cpp (src\caffe):            callbacks_[i]->on_gradients_ready();
+Solver.hpp (include\caffe):  const vector<Callback*>& callbacks() const { return callbacks_; }
+Solver.hpp (include\caffe):    callbacks_.push_back(value);
+Solver.hpp (include\caffe):  vector<Callback*> callbacks_;
+---- SetActionFunction Matches (3 in 3 files) ----
+Caffe.cpp (tools):    solver->SetActionFunction(signal_handler.GetActionFunction());
+Solver.cpp (src\caffe):void Solver<Dtype>::SetActionFunction(ActionCallback func) {
+Solver.hpp (include\caffe):  void SetActionFunction(ActionCallback func);
+---- GetActionFunction Matches (3 in 3 files) ----
+Caffe.cpp (tools):    solver->SetActionFunction(signal_handler.GetActionFunction());
+Signal_handler.cpp (src\caffe\util):ActionCallback SignalHandler::GetActionFunction() {
+Signal_handler.h (include\caffe\util):  ActionCallback GetActionFunction();

@@ -24,6 +24,8 @@ void caffe_conv(const Blob<Dtype>* in, ConvolutionParameter* conv_param,
     Blob<Dtype>* out) {
   const bool has_depth = (out->num_axes() == 5);
   if (!has_depth) { CHECK_EQ(4, out->num_axes()); }
+
+  // 神经元并非链接整个输入image，而只是连接局部区域，这个区域叫作局部感受野，它的大小可以理解为 kernel size的大小。
   // Kernel size, stride, and pad
   int kernel_h, kernel_w;
   if (conv_param->has_kernel_h() || conv_param->has_kernel_w()) {

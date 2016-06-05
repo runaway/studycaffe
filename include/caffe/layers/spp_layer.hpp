@@ -53,6 +53,8 @@ class SPPLayer : public Layer<Dtype> {
   vector<Blob<Dtype>*> split_top_vec_;
   /// bottom vector holder used in call to the underlying PoolingLayer::Forward
   vector<vector<Blob<Dtype>*>*> pooling_bottom_vecs_;
+
+  // 神经元并非链接整个输入image，而只是连接局部区域，这个区域叫作局部感受野，它的大小可以理解为 kernel size的大小。
   /// the internal Pooling layers of different kernel sizes
   vector<shared_ptr<PoolingLayer<Dtype> > > pooling_layers_;
   /// top vector holders used in call to the underlying PoolingLayer::Forward

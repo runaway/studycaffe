@@ -27,9 +27,12 @@ message AccuracyParameter {
 
 定义中关于axis的说明：
 
-axis指出在预测blob中，哪一维是label轴，如(N x C x H x W)的blob，axis=0，则N为label对应的维度。axis=1,则C为label对应的维度，而剩下的N为outer样本数量， H x W为inner样本数量。
+axis指出在预测blob中，哪一维是label轴，如(N x C x H x W)的blob，axis=0，则N为
+label对应的维度。axis=1,则C为label对应的维度，而剩下的N为outer样本数量,HxW为
+inner样本数量。
 由代码可知，当axis=k时outer_num_=blob.shape[0,..,k)，inner_num_=blob.shape[k+1,..,shape.size)。
-一般的，label blob的维度为(N x C)，N为样本数量，C为标签数量（即类别个数）。axis=1,outer_num_=N,inner_num_=shape[2,2)=1(即没有inner)
+一般的，label blob的维度为(N x C)，N为样本数量，C为标签数量（即类别个数）。
+axis=1,outer_num_=N,inner_num_=shape[2,2)=1(即没有inner)
 
 outer_num_ = bottom[0]->count(0, label_axis_);
 inner_num_ = bottom[0]->count(label_axis_ + 1);

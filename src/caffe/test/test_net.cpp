@@ -286,6 +286,8 @@ class NetTest : public MultiDeviceTest<TypeParam> {
   virtual void InitUnsharedWeightsNet(const Dtype* loss_weight = NULL,
       const Dtype* midnet_loss_weight = NULL,
       const bool force_backward = false, const bool bias_term = false,
+
+      // 学习率调整的参数 
       const Dtype blobs_lr_w1 = 1, const Dtype blobs_lr_b1 = 2,
       const Dtype blobs_lr_w2 = 1, const Dtype blobs_lr_b2 = 2) {
     string bias_str = bias_term ? "true ":"false ";

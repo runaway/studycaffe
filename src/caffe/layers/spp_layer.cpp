@@ -88,6 +88,7 @@ LayerParameter SPPLayer<Dtype>::GetPoolingParam(const int pyramid_level,
   LayerParameter pooling_param;
   int num_bins = pow(2, pyramid_level);
 
+  // 神经元并非链接整个输入image，而只是连接局部区域，这个区域叫作局部感受野，它的大小可以理解为 kernel size的大小。  
   // find padding and kernel size so that the pooling is
   // performed across the entire image
   int kernel_h = ceil(bottom_h / static_cast<double>(num_bins));

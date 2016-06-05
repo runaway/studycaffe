@@ -155,14 +155,18 @@ void Blob<Dtype>::ReshapeLike(const Blob<Dtype>& other) {
 /*
 功能：简单的构造函数 
 输入：num，channels，height，width
+N: 数据的个数，例如SGD时一次mini-batch的图像个数。
+K: 如果是图像，可以理解为通道数量；如果是网络中间结果，就是feature map的数量。
+H, W： 如果是图像数据，可以理解为图像的高度和宽度；如果是参数数据，可以理解为滤波核的高度和宽度。
+
 */
 template <typename Dtype>  
-Blob<Dtype>::Blob(const int num, const int channels, const int height,  
-    const int width)  
+Blob<Dtype>::Blob(const int num, const int channels, const int height, const int width)  
   // capacity_ must be initialized before calling Reshape  
   // 技巧，先初始化容量为0，然后用reshape来分配内存了  
-  : capacity_(0) {  
-  Reshape(num, channels, height, width);  
+    : capacity_(0) 
+{  
+    Reshape(num, channels, height, width);  
 }  
   
 template <typename Dtype>  
