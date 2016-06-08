@@ -50,7 +50,10 @@ void InternalThread::entry(int device, Caffe::Brew mode, int rand_seed,
   Caffe::set_random_seed(rand_seed);
   Caffe::set_solver_count(solver_count);
   Caffe::set_root_solver(root_solver);
-
+/*
+关于两个StartInternalThread函数, 调用了InternalThreadEntry()函数.而这个函数里有 
+while (!must_stop()){xxxfree_.pop()}. 这个while循环会一直进行下去,直到调用析构函数, 从而StopInternalThread(). 
+*/
   InternalThreadEntry();
 }
 

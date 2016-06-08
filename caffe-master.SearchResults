@@ -1,18 +1,3 @@
----- callbacks_ Matches (9 in 2 files) ----
-Solver.cpp (src\caffe):    : net_(), callbacks_(), root_solver_(root_solver),
-Solver.cpp (src\caffe):    : net_(), callbacks_(), root_solver_(root_solver),
-Solver.cpp (src\caffe):        for (int i = 0; i < callbacks_.size(); ++i) 
-Solver.cpp (src\caffe):            callbacks_[i]->on_start();
-Solver.cpp (src\caffe):        for (int i = 0; i < callbacks_.size(); ++i) 
-Solver.cpp (src\caffe):            callbacks_[i]->on_gradients_ready();
-Solver.hpp (include\caffe):  const vector<Callback*>& callbacks() const { return callbacks_; }
-Solver.hpp (include\caffe):    callbacks_.push_back(value);
-Solver.hpp (include\caffe):  vector<Callback*> callbacks_;
----- SetActionFunction Matches (3 in 3 files) ----
-Caffe.cpp (tools):    solver->SetActionFunction(signal_handler.GetActionFunction());
-Solver.cpp (src\caffe):void Solver<Dtype>::SetActionFunction(ActionCallback func) {
-Solver.hpp (include\caffe):  void SetActionFunction(ActionCallback func);
----- GetActionFunction Matches (3 in 3 files) ----
-Caffe.cpp (tools):    solver->SetActionFunction(signal_handler.GetActionFunction());
-Signal_handler.cpp (src\caffe\util):ActionCallback SignalHandler::GetActionFunction() {
-Signal_handler.h (include\caffe\util):  ActionCallback GetActionFunction();
+---- LayerParameter layer_param_; Matches (2 in 2 files) ----
+Layer.cpp (src\caffe):LayerParameter layer_param_;      // 这个是protobuf文件中存储的layer参数
+Layer.hpp (include\caffe):  LayerParameter layer_param_;

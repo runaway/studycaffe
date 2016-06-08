@@ -58,6 +58,9 @@ SetUp函数需要根据实际的参数设置进行实现，对各种类型的参数初始化；Forward和Backwa
 // 用从protobuf 读入message LayerParameter 中的blobs 初始化 blobs_ 
 // blobs_定义：vector<shared_ptr<Blob<Dtype> > > blobs_
 
+/* 
+首先获得当前网络的Phase，是train还是test，在初始化列表初始化LayerParameter,之后blobs_这里存放的是一个指向blob类的shared_ptr指针的一个vector，在这里是申请空间，然后将传入的layer_param中的blob拷贝过来。 
+*/  
   // 显式的构造函数不需要重写，任何初始工作在SetUp()中完成;构造方法只是获取phase值，并且如果层说明参数(layer_param_)中提供了权值和偏置参数，也复制。    
   /**
    * You should not implement your own constructor. Any set up code should go
@@ -112,6 +115,7 @@ SetUp函数需要根据实际的参数设置进行实现，对各种类型的参数初始化；Forward和Backwa
    * 此方法非虚函数，不用重写，模式固定 
    */  
 
+// 虚函数。会调用特定layer（子类）
 // SetUp设置层的互斥量、检查BLOB的参数、调用LayerSetUp进行初始化  
 // LayerSetUp是一个虚函数，用户可以去重载它。  
 // 然后再设置topblob的形状以及设置损失权重。 
@@ -367,6 +371,9 @@ SetUp函数需要根据实际的参数设置进行实现，对各种类型的参数初始化；Forward和Backwa
    // 来满足ExactNumTopBlobs或者MinTopBlobs所要求的top blobs的个数  
   virtual inline bool AutoTopBlobs() const { return false; }
 
+/* 
+AllowforceBackward用来设置是否强制梯度返回，因为有些层其实不需要梯度信息 ，后面两个函数分别查看以及设置是是否需要计算梯度。 
+*/    
   /**
    * @brief Return whether to allow force_backward for a given bottom blob
    *        index.
@@ -391,6 +398,7 @@ SetUp函数需要根据实际的参数设置进行实现，对各种类型的参数初始化；Forward和Backwa
     return (param_propagate_down_.size() > param_id) ?
         param_propagate_down_[param_id] : false;
   }
+  //set_param_propagate_down，param_propagate_down 函数：设置对于那些bottom 需要反向传播。 
   /**
    * @brief Sets whether the layer should compute gradients w.r.t. a
    *        parameter at a particular index given by param_id.
@@ -406,29 +414,38 @@ SetUp函数需要根据实际的参数设置进行实现，对各种类型的参数初始化；Forward和Backwa
  protected:
 
     // layer中有这三个主要参数：    
+
+    // 层说明参数，从protocal buffers格式的网络结构说明文件中读取  
     // 层的参数 这个是protobuf文件中存储的layer参数
   /** The protobuf that stores the layer parameters */
   LayerParameter layer_param_;
 
+// 层状态，参与网络的训练还是测试  
     // 训练还是测试  
   /** The phase: TRAIN or TEST */
   Phase phase_;
 
+// 层权值和偏置参数，使用向量是因为权值参数和偏置是分开保存在两个blob中的  
     // blobs_的是blob指针容器
     // 这个存储的是layer的参数，在程序中用的 
   /** The vector that stores the learnable parameters as a set of blobs. */
   vector<shared_ptr<Blob<Dtype> > > blobs_; 
 
+  // 标志每个top blob是否需要计算反向传递的梯度值  
     // 是否需要计算梯度，也即是否需要往下传播  
     // 这个bool表示是否计算各个blob参数的diff，即传播误差
   /** Vector indicating whether to compute the diff of each param blob. */
   vector<bool> param_propagate_down_;
 
+// 非LossLayer为零，LossLayer中表示每个top blob计算的loss的权重 
 // 每个top blob在目标函数中有非零的权重
   /** The vector that indicates whether each top blob has a non-zero weight in
    *  the objective function. */
   vector<Dtype> loss_;
 
+
+/////////////////////////////这两个函数非虚函数，它们内部会调用如下虚函数完成数据前向传递和  
+/////////////////////////////误差反向传播，根据执行环境的不同每个子类Layer必须重写CPU和GPU版本， 
   // 纯虚函数，必须要实现前向的CPU计算，需要用户去实现全向传播CPU，也就是说必须要实现CPU的前向传播   
   /** @brief Using the CPU device, compute the layer output. */
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
@@ -485,42 +502,51 @@ SetUp函数需要根据实际的参数设置进行实现，对各种类型的参数初始化；Forward和Backwa
   virtual void CheckBlobCounts(const vector<Blob<Dtype>*>& bottom,
                                const vector<Blob<Dtype>*>& top) {
     if (ExactNumBottomBlobs() >= 0) {
+        // 保证输入bottom 数量和要求的相同  
       CHECK_EQ(ExactNumBottomBlobs(), bottom.size())
           << type() << " Layer takes " << ExactNumBottomBlobs()
           << " bottom blob(s) as input.";
     }
     if (MinBottomBlobs() >= 0) {
+        //保证输入的bottom数量大于或等于要求的最小数量  
       CHECK_LE(MinBottomBlobs(), bottom.size())
           << type() << " Layer takes at least " << MinBottomBlobs()
           << " bottom blob(s) as input.";
     }
     if (MaxBottomBlobs() >= 0) {
+        //保证输入的bottom数量小于或等于要求的最大数量  
       CHECK_GE(MaxBottomBlobs(), bottom.size())
           << type() << " Layer takes at most " << MaxBottomBlobs()
           << " bottom blob(s) as input.";
     }
     if (ExactNumTopBlobs() >= 0) {
+        // 保证输入top数量和要求的相同  
       CHECK_EQ(ExactNumTopBlobs(), top.size())
           << type() << " Layer produces " << ExactNumTopBlobs()
           << " top blob(s) as output.";
     }
     if (MinTopBlobs() >= 0) {
+        //保证输入的top数量大于或等于要求的最小数量  
       CHECK_LE(MinTopBlobs(), top.size())
           << type() << " Layer produces at least " << MinTopBlobs()
           << " top blob(s) as output.";
     }
     if (MaxTopBlobs() >= 0) {
+        //保证输入的top数量小于或等于要求的最大数量  
       CHECK_GE(MaxTopBlobs(), top.size())
           << type() << " Layer produces at most " << MaxTopBlobs()
           << " top blob(s) as output.";
     }
     if (EqualNumBottomTopBlobs()) {
+        //保证输入的bottom数量和输出的top数量相同  
       CHECK_EQ(bottom.size(), top.size())
           << type() << " Layer produces one top blob as output for each "
           << "bottom blob input.";
     }
   }
-
+/* 
+SetLoss是非常重要的一个步骤，是被SetUp调用来初始化top bottom的weights，并且存储非零的loss weights 在diff blob里面 
+*/  
 /*
 其中的一些函数的具体实现如下：
 主要就是前传和反传，前传调用对应的Forward_cpu或者Forward_gpu
@@ -586,6 +612,9 @@ SetUp函数需要根据实际的参数设置进行实现，对各种类型的参数初始化；Forward和Backwa
 // 有一点需要记住的是：在模板类Layer的forward函数里面，会再次调用调用Reshape()函数，也就是说，即使我们每次迭代每个minibatch里的图像（或者特征）的shape不一致，也没有关系，  
 // 因为在真正调用forward_cpu / forward_gpu 之前都会重新Reshape；SetUp里面的Reshape只是设置了初始的Top blobs 的shape  
 
+/* 
+前传调用对应的Forward_cpu或者Forward_gpu而我们知道Forward_cpu是纯虚函数，必须要实而Forward_gpu是虚函数，如果不实现就调用 Forward_cpu函数了。前传（你必须实现自己的Forward_cpu，实现Forward_gpu是可选的） 
+*/  
 template <typename Dtype>  
 inline Dtype Layer<Dtype>::Forward(const vector<Blob<Dtype>*>& bottom,  
     const vector<Blob<Dtype>*>& top) {  
@@ -648,6 +677,8 @@ inline void Layer<Dtype>::Backward(const vector<Blob<Dtype>*>& top,
     const vector<Blob<Dtype>*>& bottom) {
   switch (Caffe::mode()) {  
   case Caffe::CPU:// CPU反传  
+  //根据blob top 的error 梯度（diff）计算bottom 的 error 梯度。 propagate_down 是长度   
+//和bottom 相同的vector ，用于控制是否需要对对应的bottom 元素传播梯度。具体layer具体定义。 
     Backward_cpu(top, propagate_down, bottom);  
     break;  
   case Caffe::GPU:// GPU反传  
@@ -658,14 +689,19 @@ inline void Layer<Dtype>::Backward(const vector<Blob<Dtype>*>& top,
   }
 }
 
+////////////////Layer的序列化函数,将layer的层说明参数layer_param_，层权值和偏置  
+////////////////参数blobs_复制到LayerParameter对象，便于写到磁盘，  
 // 将LayerParameter转换为ProtoBuf 
 // Serialize LayerParameter to protocol buffer
 template <typename Dtype>
 void Layer<Dtype>::ToProto(LayerParameter* param, bool write_diff) {
   param->Clear();
+
+  // 复制层说明参数layer_param_  
   param->CopyFrom(layer_param_);
   param->clear_blobs();
   for (int i = 0; i < blobs_.size(); ++i) {
+      // 复制层权值和偏置参数blobs_  
     //调用Blob的ToProto方法。param->add_blobs()返回Blobproto*,从而将Blob的shape_,data_,diff_分别copy到BlobProto的shape,data,diff,完成序列化 
     blobs_[i]->ToProto(param->add_blobs(), write_diff);
   }

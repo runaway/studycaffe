@@ -62,6 +62,8 @@ typedef shared_ptr<Layer<Dtype> > (*Creator)(const LayerParameter&);
 // CreatorRegistry是字符串与对应的Creator的映射  
 typedef std::map<string, Creator> CreatorRegistry;  
 
+ //typedef见http://www.kuqin.com/language/20090322/41866.html
+  //Creator为一个函数指针，返回类型是shared_ptr<Layer<Dtype> >
   static CreatorRegistry& Registry() {
     static CreatorRegistry* g_registry_ = new CreatorRegistry();
     return *g_registry_;
@@ -88,6 +90,8 @@ static shared_ptr<Layer<Dtype> > CreateLayer(const LayerParameter& param) {
   // 测试是否查找到给定type的Creator  
   CHECK_EQ(registry.count(type), 1) << "Unknown layer type: " << type  
       << " (known types: " << LayerTypeListString() << ")";  
+
+    //这里大概就直接new了一个新的layer类。DataLayer,ConvolutionLayer,...
   // 调用对应的层的Creator函数  
   return registry[type](param);  
 }  
@@ -176,6 +180,13 @@ class LayerRegisterer {
     return shared_ptr<Layer<Dtype> >(new type##Layer<Dtype>(param));           \
   }                                                                            \
   REGISTER_LAYER_CREATOR(type, Creator_##type##Layer)
+  //注意这里的REGISTER_LAYER_CLASS,REGISTER_LAYER_CREATOR
+  //新定义了对象LayerRegisterer
+  //->AddCreator->registry[type] = creator
+  //这样的话,在CreateLayer函数里就有返回值了.return registry[type](param);
+  //如:在data_layer.cpp最后可以找到REGISTER_LAYER_CLASS(Data);
+  //REGISTER_LAYER_CLASS(Data)是在namespace caffe里的,又是static的.
+  //所以当程序第一次使用namespace caffe时,就会调用REGISTER_LAYER_CLASS(Data).以及所有其他的static的函数/对象(?)
 
 }  // namespace caffe
 

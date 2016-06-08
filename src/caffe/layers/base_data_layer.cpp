@@ -15,7 +15,11 @@ namespace caffe {
 template <typename Dtype>  
 BaseDataLayer<Dtype>::BaseDataLayer(const LayerParameter& param)  
     : Layer<Dtype>(param),  
-      transform_param_(param.transform_param()) {  
+      transform_param_(param.transform_param()) 
+{
+    // 主函数为空所以这个构造函数的主要在初始化 
+    // 1.BasePrefetchingDataLayer,
+    // 2.reader_
 }  
   
 // 初始化的时候根据top的大小来确定，如果是1表明只输出数据，而不输出类标  
@@ -41,7 +45,9 @@ template <typename Dtype>
 BasePrefetchingDataLayer<Dtype>::BasePrefetchingDataLayer(
     const LayerParameter& param)
     : BaseDataLayer<Dtype>(param),
-      prefetch_free_(), prefetch_full_() {
+      prefetch_free_(), prefetch_full_() 
+{
+// BasePrefetchingDataLayer里的prefetch_free_ prefetch_full_队列的元素是Batch. 队列长度为3. 
   for (int i = 0; i < PREFETCH_COUNT; ++i) {
     prefetch_free_.push(&prefetch_[i]);
   }
@@ -97,6 +103,7 @@ void BasePrefetchingDataLayer<Dtype>::InternalThreadEntry() {
     CUDA_CHECK(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));  
   }  
 #endif  
+// 关于xxxfree_.pop(),由于free_和 prefetch_free_都是BlockingQueue,所以会暂时阻塞,直到下次xxxfree_队列里被push进新的数据为止.
   
   try {  
     while (!must_stop()) {  

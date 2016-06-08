@@ -28,6 +28,8 @@ void BlockingQueue<T>::push(const T& t) {
   boost::mutex::scoped_lock lock(sync_->mutex_);
   queue_.push(t);
   lock.unlock();
+
+  //唤醒等待中的线程。
   sync_->condition_.notify_one();
 }
 
@@ -52,9 +54,10 @@ T BlockingQueue<T>::pop(const string& log_on_wait) {
     if (!log_on_wait.empty()) {
       LOG_EVERY_N(INFO, 1000)<< log_on_wait;
     }
+    //如果queue_为空，就一直阻塞。
     sync_->condition_.wait(lock); // 如果队列一直为空则一直在等待  
   }
-
+    //返回第一个被压入队列的值，被把它pop出来。
   T t = queue_.front(); // 否则取出  
   queue_.pop();
   return t;

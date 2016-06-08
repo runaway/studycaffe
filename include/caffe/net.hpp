@@ -331,7 +331,7 @@ class Net {
 
   // 整个网络的输入输出blob以及ID
   /// blob indices for the input and the output of the net
-  vector<int> net_input_blob_indices_;
+  vector<int> net_input_blob_indices_; //第一层数据层的top blobs
   vector<int> net_output_blob_indices_;
   vector<Blob<Dtype>*> net_input_blobs_;
   vector<Blob<Dtype>*> net_output_blobs_;

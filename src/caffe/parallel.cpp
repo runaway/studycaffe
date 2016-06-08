@@ -284,40 +284,61 @@ void P2PSync<Dtype>::InternalThreadEntry() {
 }
 
 template<typename Dtype>
-void P2PSync<Dtype>::on_start() {
+void P2PSync<Dtype>::on_start() 
+{
 #ifndef CPU_ONLY
 #ifdef DEBUG
-  int device;
-  CUDA_CHECK(cudaGetDevice(&device));
-  CHECK(device == solver_->param().device_id());
+    int device;
+    CUDA_CHECK(cudaGetDevice(&device));
+    CHECK(device == solver_->param().device_id());
 #else
-//  CHECK(false);
+    //  CHECK(false);
 #endif
 
-  // Wait for update from parent
-  if (parent_) {
-    P2PSync<Dtype> *parent = queue_.pop();
-    CHECK(parent == parent_);
-  }
+    // Wait for update from parent
+    if (parent_) 
+    {
+        P2PSync<Dtype> *parent = queue_.pop();
 
-  // Update children
-  for (int i = children_.size() - 1; i >= 0; i--) {
-    Dtype* src = data_;
-    Dtype* dst = children_[i]->data_;
+        //见下面5.blocking_queue.cpp的分析
+        //当gpu1,2,3通过
+        //syncs[i]->StartInternalThread()
+        //-》void P2PSync<Dtype>::InternalThreadEntry()
+        //-》solver_->Step(solver_->param().max_iter() - initial_iter_);
+        //第一次进入这个函数时，queue_是空的。所以进程被阻塞。
+        //直到gpu0(root)进入了这个on_start()函数,经过了下面某行的children_[i]->queue_.push(this);这时候才激活了进程1，2，3。
+        //所以说，void P2PSync<Dtype>::run中的最后几行
+        //for (int i = 1; i < syncs.size(); ++i) {
+        //    syncs[i]->StartInternalThread();
+        //}
+        //solver_->Solve();
+        //进程的顺序是：
+        //第一次迭代时，GPU1，2，3分别进入这个on_start()函数，因为queue_为空，所以在pop这行被阻塞了。
+        //这时候GPU0也进入了这个函数，成功的通过了这里（因为它就没有parent）,一直进行到了下面的children_[i]->queue_.push(this);
+        //这时候GPU0，GPU2被唤醒了，然后是GPU3（因为GPU3的parent是GPU2，所以当GPU2执行到children_[i]->queue_.push(this)，GPU3才被唤醒）
+        CHECK(parent == parent_);
+    }
+
+    // Update children
+    for (int i = children_.size() - 1; i >= 0; i--)
+    {
+        Dtype* src = data_;
+        Dtype* dst = children_[i]->data_;
 
 #ifdef DEBUG
-    cudaPointerAttributes attributes;
-    CUDA_CHECK(cudaPointerGetAttributes(&attributes, src));
-    CHECK(attributes.device == device);
-    CUDA_CHECK(cudaPointerGetAttributes(&attributes, dst));
-    CHECK(attributes.device == children_[i]->solver_->param().device_id());
+        cudaPointerAttributes attributes;
+        CUDA_CHECK(cudaPointerGetAttributes(&attributes, src));
+        CHECK(attributes.device == device);
+        CUDA_CHECK(cudaPointerGetAttributes(&attributes, dst));
+        CHECK(attributes.device == children_[i]->solver_->param().device_id());
 #endif
 
-    CUDA_CHECK(cudaMemcpyAsync(dst, src, size_ * sizeof(Dtype),
+        // 把parent的数据copy给child。
+        CUDA_CHECK(cudaMemcpyAsync(dst, src, size_ * sizeof(Dtype),
         cudaMemcpyDeviceToDevice, cudaStreamDefault));
-    CUDA_CHECK(cudaStreamSynchronize(cudaStreamDefault));
-    children_[i]->queue_.push(this);
-  }
+        CUDA_CHECK(cudaStreamSynchronize(cudaStreamDefault));
+        children_[i]->queue_.push(this);
+    }
 #endif
 }
 
@@ -396,10 +417,13 @@ void P2PSync<Dtype>::Prepare(const vector<int>& gpus,
   // Build the GPU tree by finding the parent for each solver
   for (int attempts = 0; attempts < pairs.size(); ++attempts) {
     for (int i = 1; i < pairs.size(); ++i) {
-      if (!syncs->at(i).get()) {
+      if (!syncs->at(i).get()) {//在没有进行（标志1）那行之前，syncs[i].get()都是0。
         P2PSync<Dtype>* parent = NULL;
         for (int j = 0; j < syncs->size(); ++j) {
           P2PSync<Dtype>* sync = j == 0 ? this : syncs->at(j).get();
+                    //调用这个run函数是在caffe.cpp的int train()函数里。
+          //这里的this指的就是train函数里在调用run函数前一行定义的对象sync。
+          //caffe::P2PSync<float> sync(solver, NULL, solver->param());
           if (sync) {
             const SolverParameter& p = sync->solver()->param();
             if (p.device_id() == pairs[i].parent()) {
@@ -415,25 +439,39 @@ void P2PSync<Dtype>::Prepare(const vector<int>& gpus,
       }
     }
   }
+
+  //reset的顺序
+//syncs[1]:GPU1, its parent is "this"
+//syncs[3]:GPU2, its child is "syncs[2]"
+//syncs[2]:GPU3, its parent is "this"
+//syncs[0]没有被赋值，之后也没有被使用。因为它对应的是root_solver:GPU0。
 }
 
 template<typename Dtype>
-void P2PSync<Dtype>::Run(const vector<int>& gpus) {
-  vector<shared_ptr<P2PSync<Dtype> > > syncs(gpus.size());
-  Prepare(gpus, &syncs);
+void P2PSync<Dtype>::Run(const vector<int>& gpus) 
+{
+    vector<shared_ptr<P2PSync<Dtype> > > syncs(gpus.size());
+    Prepare(gpus, &syncs);
 
-  LOG(INFO)<< "Starting Optimization";
+    LOG(INFO)<< "Starting Optimization";
 
-  for (int i = 1; i < syncs.size(); ++i) {
-    syncs[i]->StartInternalThread();
-  }
+    //设有4个gpus。0，1，2，3。computer函数的结果为：
+    // [-1,0;0,1;2,3;0,2] <-除了[-1,0]这一对(0是根节点)以外，剩下都是[parent,device]
+    for (int i = 1; i < syncs.size(); ++i) 
+    {
+        // 初始化InternalThread类的thread_(shared_ptr类型)
+        // 调用parallel.cpp中的void P2PSync<Dtype>::InternalThreadEntry()
+        // 从而调用solver_->Step(solver_->param().max_iter() - initial_iter_);
+        syncs[i]->StartInternalThread();
+    }
 
-  // Run root solver on current thread
-  solver_->Solve();
+    // Run root solver on current thread
+    solver_->Solve();
 
-  for (int i = 1; i < syncs.size(); ++i) {
-    syncs[i]->StopInternalThread();
-  }
+    for (int i = 1; i < syncs.size(); ++i) 
+    {
+        syncs[i]->StopInternalThread();
+    }
 }
 
 INSTANTIATE_CLASS(Params);

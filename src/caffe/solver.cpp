@@ -110,16 +110,19 @@ void Solver<Dtype>::InitTrainNet()
         << "Creating training net from train_net file: " << param_.train_net();
     ReadNetParamsFromTextFileOrDie(param_.train_net(), &net_param);
   }
+  
   if (param_.has_net_param()) {
     LOG_IF(INFO, Caffe::root_solver())
         << "Creating training net specified in net_param.";
     net_param.CopyFrom(param_.net_param());
   }
+  
   if (param_.has_net()) {
     LOG_IF(INFO, Caffe::root_solver())
         << "Creating training net from net file: " << param_.net();
     ReadNetParamsFromTextFileOrDie(param_.net(), &net_param);
   }
+  
   // Set the correct NetState.  We start with the solver defaults (lowest
   // precedence); then, merge in any NetState specified by the net_param itself;
   // finally, merge in any NetState specified by the train_state (highest
@@ -140,6 +143,7 @@ void Solver<Dtype>::InitTrainNet()
 
     if (Caffe::root_solver()) 
     {
+        // shared_ptr的reset()函数是将引用计数减1，停止对指针的共享，除非引用计数为0，否则不会发生删除操作。带参数的reset()则类似相同形式的构造函数，原指针引用计数减1的同时改为管理另外一个指针。 
         // 调用模板类的构造函数，进行net的初始化  
         net_.reset(new Net<Dtype>(net_param));
     } 
@@ -313,6 +317,7 @@ void Solver<Dtype>::Step(int iters)
         for (int i = 0; i < param_.iter_size(); ++i) 
         {
             // 执行反向传播，修改权值
+            // 注意这里的bottom_vec是新建的一个vector,原来并没有值.
             loss += net_->ForwardBackward();
         }
 

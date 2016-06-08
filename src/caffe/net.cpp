@@ -62,9 +62,73 @@ Net<Dtype>::Net(const string& param_file, Phase phase, const Net* root_net)
 }
 
 /*
-功能：初始化网络 
-输入：NetParameter& in_param 
-输出：无 
+功能：初始化网络
+输入：NetParameter& in_param
+输出：无
+步骤：
+<1> 调用InsertSplits()函数从in_param读入新网络到param
+<2> 定义name_，blob_name_to_idx，available_blobs，num_layers
+<3> param.input_size()返回输入层blob的个数;
+    param.input(i)表示第i个blob的名字;
+    param.layers_size()返回网络的层数。
+<4> 对每一个输入层的blob：
+    产生一块和当前blob一样大的空间 e.g. imput_dim=[12 55 66 39 20 24 48 64]表示第一个blob的四个维数为 12 55 66 39，第二个为 20 24 48 64 接着blob_pointer指向这块空间
+    blob_pointer压到blobs_中 vector<shared_ptr<Blob<Dtype>>> blobs_
+    blob_name压到blob_names_中 vector<string> blob_names_
+    param.force_backward()压到blob_need_backward_中vector<bool> blob_need_backward_
+    i 压到 net_input_blob_indices_中 net_input_blob_indices_ -> vector
+    blob_pointer.get() 压到 net_input_blobs_中
+    注意与blobs_的区别
+    vector<shared_ptr<Blob<Dtype>>> blobs_
+    vector<Blob<Dtype>*> net_input_blobs_
+    shared_ptr类型的参数调用.get()则得到Blob*类型
+    map<string, int> blob_name_to_idx
+    初始化为输入层的每个blob的名字 set<string> available_blobs
+    计算所需内存 memory_used += blob_pointer->count()
+
+<5> 存每一层的输入blob指针 vector<vector<Blob<Dtype>*> > bottom_vecs_
+    存每一层输入(bottom)的id vector<vector<int> > bottom_id_vecs_
+    存每一层输出(top)的blob vector<vector<Blob<Dtype>*> > top_vecs_
+    用网络的层数param.layers_size()去初始化上面四个变量
+    vector<vector<int> > top_id_vecs_
+<6> 对第i层（很大的一个for循环）：
+    param.layers(i)返回的是关于第当前层的参数：
+    layer_param = param.layers(i)
+    把当前层的参数转换为shared_ptr<Layer<Dtype>>，并压入到layers_中
+    把当前层的名字压入到layer_names_：vector<string> layer_names_
+    判断当前层是否需要反馈 need_backward = param.force_backward()
+
+    下面开始产生当前层：分为处理bottom的blob和top的blob两个步骤
+    对第j个bottom的blob：
+        layer_param.bottom_size()存的是当前层的输入blob数量
+        layer_param.bottom(j)存的是第j个输入blob的名字
+        读取当前blob的id，其中blob_name_to_idx在输入层初始化过了
+        blob_name_to_idx[blob_name] = i
+        输出当前blob的名字
+        存入第j个输入blob的指针bottom_vecs_[i].push_back(blobs_[blob_id].get())
+        存入第j个输入blob的id bottom_id_vecs_[i].push_back(blob_id)
+        更新need_backward
+        从available_blobs中删除第j个blob的名字
+
+    对第j个top的blob：
+        layer_param.top_size()存的是当前层的输出blob数量
+        layer_param.top(j)存的是第j个输出blob的名字
+        判断是否进行同址计算
+        输出当前blob的名字
+        定义一块新的blob空间，用blob_pointer指向这块空间
+        把这个指针存入到blobs_中
+        把blob_name、force_backward、idx存入对应的容器中
+        向available_blobs插入当前blob的名字
+        top_vecs_[i]对于第i层，插入当前blob的指针
+        top_id_vecs_[i]对于第i层，插入当前blob的id
+    输出当前层位于top的blob的信息
+    计算所需内存
+    判断当前层i是否需要backward
+
+<7> 所有名字在available_blobs中的blob为当前层的输出blob，存入net_output_blobs_中
+<8> 建立每个blob的name和index的对应关系map：blob_names_index_
+<9> 建立每个层的name和index的对应关系map：layer_names_index_
+<10> 调用GetLearningRateAndWeightDecay函数
 */
 template <typename Dtype>
 void Net<Dtype>::Init(const NetParameter& in_param) 
@@ -152,6 +216,8 @@ void Net<Dtype>::Init(const NetParameter& in_param)
         } 
         else 
         {
+            // 注意这里的createlayer!
+            // layer_factory.hpp 分析见下
             layers_.push_back(LayerRegistry<Dtype>::CreateLayer(layer_param));
         }
 
@@ -234,6 +300,7 @@ void Net<Dtype>::Init(const NetParameter& in_param)
         } 
         else 
         {
+            // 注意这里的Setup!见底下关于layer.hpp的分析。
             // 调用模板类layer的SetUp方法，如果在网络的定义文件里没有设置loss_weight，那么loss layer的LayerSetup函数里会设置loww_weght, 且默认值  
             layers_[layer_id]->SetUp(bottom_vecs_[layer_id], top_vecs_[layer_id]);
         }
@@ -815,6 +882,8 @@ const vector<Blob<Dtype>*>& Net<Dtype>::Forward(
     const vector<Blob<Dtype>*> & bottom, Dtype* loss) {
   LOG_EVERY_N(WARNING, 1000) << "DEPRECATED: Forward(bottom, loss) "
       << "will be removed in a future version. Use Forward(loss).";
+
+  // 从上面solver.cpp可见bottom.size()为0
   // Copy bottom to net bottoms
   for (int i = 0; i < bottom.size(); ++i) {
     net_input_blobs_[i]->CopyFrom(*bottom[i]);
@@ -936,6 +1005,7 @@ void Net<Dtype>::UpdateDebugInfo(const int param_id) {
 判断每个blob大小是否相等
 调用ShareData函数把源层的blob赋给目标层的blob
 */
+
 template <typename Dtype>
 void Net<Dtype>::ShareTrainedLayersWith(const Net* other) {
   int num_source_layers = other->layers().size();
@@ -1182,6 +1252,8 @@ void Net<Dtype>::ToHDF5(const string& filename, bool write_diff) const {
   }
   H5Fclose(file_hid);
 }
+
+// Step() 函数中每次迭代都会调用ApplyUpdate()(class SGDSolver)->Update()(class net)
 // 更新params_中blob的值。  
 template <typename Dtype>
 void Net<Dtype>::Update() {

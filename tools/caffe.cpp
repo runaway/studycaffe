@@ -245,6 +245,9 @@ int train()
 
     solver->SetActionFunction(signal_handler.GetActionFunction());
 
+    // createSolver()这里应该是选择了默认的sgd
+    // boost::shared_ptr 指针
+    // 初始化solver
     if (FLAGS_snapshot.size()) 
     {
         LOG(INFO) << "Resuming from " << FLAGS_snapshot;

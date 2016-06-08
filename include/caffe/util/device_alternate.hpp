@@ -4,11 +4,11 @@
 #ifdef CPU_ONLY  // CPU-only Caffe.
 
 #include <vector>
-
+// 打印出GPU不可以使用  
 // Stub out GPU calls as unavailable.
 
 #define NO_GPU LOG(FATAL) << "Cannot use GPU in CPU-only Caffe: check mode."
-
+// 定义给定类的前向和反向（GPU和CPU）传播的函数定义
 #define STUB_GPU(classname) \
 template <typename Dtype> \
 void classname<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, \
@@ -65,7 +65,9 @@ void classname<Dtype>::funcname##_##gpu(const vector<Blob<Dtype>*>& top, \
     CHECK_EQ(status, CURAND_STATUS_SUCCESS) << " " \
       << caffe::curandGetErrorString(status); \
   } while (0)
-
+//caffe采取的线程格和线程块的维数设计  
+// blockDim.x* gridDim.x表示的是该线程格所有线程的数量  
+//n表示核函数总共要处理的元素个数  
 // CUDA: grid stride looping
 #define CUDA_KERNEL_LOOP(i, n) \
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; \
@@ -76,7 +78,7 @@ void classname<Dtype>::funcname##_##gpu(const vector<Blob<Dtype>*>& top, \
 #define CUDA_POST_KERNEL_CHECK CUDA_CHECK(cudaPeekAtLastError())
 
 namespace caffe {
-
+//CUDA的lib错误报告  
 // CUDA: library error reporting.
 const char* cublasGetErrorString(cublasStatus_t error);
 const char* curandGetErrorString(curandStatus_t error);
@@ -84,6 +86,7 @@ const char* curandGetErrorString(curandStatus_t error);
 // CUDA: use 512 threads per block
 const int CAFFE_CUDA_NUM_THREADS = 512;
 
+//CUDA线程的块的数量  
 // CUDA: number of blocks for threads.
 inline int CAFFE_GET_BLOCKS(const int N) {
   return (N + CAFFE_CUDA_NUM_THREADS - 1) / CAFFE_CUDA_NUM_THREADS;

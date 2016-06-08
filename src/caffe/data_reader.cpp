@@ -20,22 +20,31 @@ using boost::weak_ptr;
 map<const string, weak_ptr<DataReader::Body> > DataReader::bodies_;
 static boost::mutex bodies_mutex_;
 
+// 第一个solver里的DataReader reader_初始化的时候,
+// 剩下的solvers里的DataReader reader_初始化的时候, 
 // 构造函数，传入的是网络的参数、  
 // 初始化queue_pair_（里面包含两个阻塞队列free_和full_）  
 DataReader::DataReader(const LayerParameter& param)  
-    : queue_pair_(new QueuePair(  //  
-        param.data_param().prefetch() * param.data_param().batch_size())) {  
-  // Get or create a body  
-  // 首先创建或者获取一个body实例  
-  boost::mutex::scoped_lock lock(bodies_mutex_);  
-  string key = source_key(param);// 从网络参数中获取key  
-  weak_ptr<Body>& weak = bodies_[key];// bodies_是存放的string到Body的映射  
-  body_ = weak.lock();  
-  if (!body_) {// 如果bodies是空的  
-    body_.reset(new Body(param));// 则新建Body实例到body_  
-    bodies_[key] = weak_ptr<Body>(body_);// 然后存放到bodies_中去  
-  }  
-  body_->new_queue_pairs_.push(queue_pair_); // 并将queue_pair放入body_中的new_queue_pairs_中去  
+    : queue_pair_(new QueuePair(  // 1.往free_里放进去(push)了这么多个Datum. (4 x batch_size) 
+        param.data_param().prefetch() * param.data_param().batch_size())) 
+{  
+    // Get or create a body  
+    // 首先创建或者获取一个body实例  
+    boost::mutex::scoped_lock lock(bodies_mutex_);  
+    string key = source_key(param);// 从网络参数中获取key  
+    weak_ptr<Body>& weak = bodies_[key];// bodies_是存放的string到Body的映射  
+    body_ = weak.lock();  
+
+    // 如果bodies是空的 
+    if (!body_) 
+    { 
+        // 2.新建一个Body. 见下面分析. 
+        body_.reset(new Body(param)); // 则新建Body实例到body_  
+        bodies_[key] = weak_ptr<Body>(body_);// 然后存放到bodies_中去  
+    }  
+
+    // 如果只有一个source,就只有一个Body对象. Body body_的成员new_queue_pairs里的free_和full_队列中的元素为Datum, 队列长度为 (4 x batch_size) 
+    body_->new_queue_pairs_.push(queue_pair_); // 并将queue_pair放入body_中的new_queue_pairs_中去  
 }  
 // 析构函数  
 DataReader::~DataReader() {  
@@ -88,46 +97,63 @@ DataReader::Body::~Body() {
 
 // 自己实现的需要执行的函数  
 // 首先打开数据库，然后设置游标，然后设置QueuePair指针容器  
-void DataReader::Body::InternalThreadEntry() {
+void DataReader::Body::InternalThreadEntry() 
+{
     // 获取所给定的数据源的类型来得到DB的指针
-  shared_ptr<db::DB> db(db::GetDB(param_.data_param().backend()));
+    shared_ptr<db::DB> db(db::GetDB(param_.data_param().backend()));
 
-  // 从网络参数中给定的DB的位置打开DB  
-  db->Open(param_.data_param().source(), db::READ);
+    // 从网络参数中给定的DB的位置打开DB  
+    db->Open(param_.data_param().source(), db::READ);
 
-  // 新建游标指针
-  shared_ptr<db::Cursor> cursor(db->NewCursor());
+    // 新建游标指针
+    shared_ptr<db::Cursor> cursor(db->NewCursor());
 
-  // 新建QueuePair指针容器，QueuePair里面包含了free_和full_这两个阻塞队列  
-  vector<shared_ptr<QueuePair> > qps;
-  try {
-    // 根据网络参数的阶段来设置solver_count  
-    int solver_count = param_.phase() == TRAIN ? Caffe::solver_count() : 1;
+    // 新建QueuePair指针容器，QueuePair里面包含了free_和full_这两个阻塞队列  
+    vector<shared_ptr<QueuePair> > qps;
+    
+    try 
+    {
+        // 根据网络参数的阶段来设置solver_count  
+        int solver_count = param_.phase() == TRAIN ? Caffe::solver_count() : 1;
 
-    // To ensure deterministic runs, only start running once all solvers
-    // are ready. But solvers need to peek on one item during initialization,
-    // so read one item, then wait for the next solver.
-    for (int i = 0; i < solver_count; ++i) {
-      shared_ptr<QueuePair> qp(new_queue_pairs_.pop());
-      read_one(cursor.get(), qp.get()); // 读取一个数据  
-      qps.push_back(qp);
+        // To ensure deterministic runs, only start running once all solvers
+        // are ready. But solvers need to peek on one item during initialization,
+        // so read one item, then wait for the next solver.
+        for (int i = 0; i < solver_count; ++i) 
+        {
+            shared_ptr<QueuePair> qp(new_queue_pairs_.pop());
+            read_one(cursor.get(), qp.get()); // 读取一个数据  
+            qps.push_back(qp);
+        }
+
+        /*这个while循环在`body_`对象被销毁之前会一直存在,所以对每个solver都进行一直`read_one`函数:*/
+        // Main loop
+        while (!must_stop()) 
+        {
+            for (int i = 0; i < solver_count; ++i) 
+            {
+                read_one(cursor.get(), qps[i].get());
+            }
+            
+            // Check no additional readers have been created. This can happen if
+            // more than one net is trained at a time per process, whether single
+            // or multi solver. It might also happen if two data layers have same
+            // name and same source.
+            CHECK_EQ(new_queue_pairs_.size(), 0);
+        }
+    } 
+    catch (boost::thread_interrupted&) 
+    {
+        // Interrupted exception is expected on shutdown
     }
-    // Main loop
-    while (!must_stop()) {
-      for (int i = 0; i < solver_count; ++i) {
-        read_one(cursor.get(), qps[i].get());
-      }
-      // Check no additional readers have been created. This can happen if
-      // more than one net is trained at a time per process, whether single
-      // or multi solver. It might also happen if two data layers have same
-      // name and same source.
-      CHECK_EQ(new_queue_pairs_.size(), 0);
-    }
-  } catch (boost::thread_interrupted&) {
-    // Interrupted exception is expected on shutdown
-  }
 }
 
+/*
+read_one函数中,free_队列里pop出一个,full_队列里就读进去一个新的数据. 这样的话每个solver都可以预读取 (4 X batch_size) 个 Datum. 
+那么在free_队列都pop空了之后会发生什么呢? 
+因为free_是BlockingQueue,所以会暂时阻塞,直到下次free_里被push进新的数据为止. 
+什么时候free_里会被push新数据呢?
+*/
 // 从数据库中获取一个数据
 void DataReader::Body::read_one(db::Cursor* cursor, QueuePair* qp) {
     // 从QueuePair中的free_队列pop出一个  
