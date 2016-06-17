@@ -283,6 +283,7 @@ void P2PSync<Dtype>::InternalThreadEntry() {
   solver_->Step(solver_->param().max_iter() - initial_iter_);
 }
 
+// CUDA的GPU的多点同步
 template<typename Dtype>
 void P2PSync<Dtype>::on_start() 
 {
@@ -343,108 +344,133 @@ void P2PSync<Dtype>::on_start()
 }
 
 template<typename Dtype>
-void P2PSync<Dtype>::on_gradients_ready() {
+void P2PSync<Dtype>::on_gradients_ready() 
+{
 #ifndef CPU_ONLY
 #ifdef DEBUG
-  int device;
-  CUDA_CHECK(cudaGetDevice(&device));
-  CHECK(device == solver_->param().device_id());
+    int device;
+    CUDA_CHECK(cudaGetDevice(&device));
+    CHECK(device == solver_->param().device_id());
 #endif
 
-  // Sum children gradients as they appear in the queue
-  for (int i = 0; i < children_.size(); ++i) {
-    P2PSync<Dtype> *child = queue_.pop();
-    Dtype* src = child->parent_grads_;
-    Dtype* dst = diff_;
+    // Sum children gradients as they appear in the queue
+    for (int i = 0; i < children_.size(); ++i) 
+    {
+        P2PSync<Dtype> *child = queue_.pop();
+        Dtype* src = child->parent_grads_;
+        Dtype* dst = diff_;
 
 #ifdef DEBUG
-    bool ok = false;
-    for (int j = 0; j < children_.size(); ++j) {
-      if (child == children_[j]) {
-        ok = true;
-      }
+        bool ok = false;
+
+        for (int j = 0; j < children_.size(); ++j) 
+        {
+            if (child == children_[j]) 
+            {
+                ok = true;
+            }
+        }
+        
+        CHECK(ok);
+        cudaPointerAttributes attributes;
+        CUDA_CHECK(cudaPointerGetAttributes(&attributes, src));
+        CHECK(attributes.device == device);
+        CUDA_CHECK(cudaPointerGetAttributes(&attributes, dst));
+        CHECK(attributes.device == device);
+#endif
+
+        caffe_gpu_add(size_, src, dst, dst);
     }
-    CHECK(ok);
-    cudaPointerAttributes attributes;
-    CUDA_CHECK(cudaPointerGetAttributes(&attributes, src));
-    CHECK(attributes.device == device);
-    CUDA_CHECK(cudaPointerGetAttributes(&attributes, dst));
-    CHECK(attributes.device == device);
-#endif
 
-    caffe_gpu_add(size_, src, dst, dst);
-  }
-
-  // Send gradients to parent
-  if (parent_) {
-    Dtype* src = diff_;
-    Dtype* dst = parent_grads_;
+    // Send gradients to parent
+    if (parent_) 
+    {
+        Dtype* src = diff_;
+        Dtype* dst = parent_grads_;
 
 #ifdef DEBUG
-    cudaPointerAttributes attributes;
-    CUDA_CHECK(cudaPointerGetAttributes(&attributes, src));
-    CHECK(attributes.device == device);
-    CUDA_CHECK(cudaPointerGetAttributes(&attributes, dst));
-    CHECK(attributes.device == parent_->solver_->param().device_id());
+        cudaPointerAttributes attributes;
+        CUDA_CHECK(cudaPointerGetAttributes(&attributes, src));
+        CHECK(attributes.device == device);
+        CUDA_CHECK(cudaPointerGetAttributes(&attributes, dst));
+        CHECK(attributes.device == parent_->solver_->param().device_id());
 #endif
 
-    CUDA_CHECK(cudaMemcpyAsync(dst, src, size_ * sizeof(Dtype),  //
-        cudaMemcpyDeviceToDevice, cudaStreamDefault));
-    CUDA_CHECK(cudaStreamSynchronize(cudaStreamDefault));
-    parent_->queue_.push(this);
-  } else {
-    // Loss functions divide gradients by the batch size, so to compensate
-    // for split batch, the root solver divides by number of solvers.
-    caffe_gpu_scal(size_, Dtype(1.0 / Caffe::solver_count()), diff_);
-  }
+        CUDA_CHECK(cudaMemcpyAsync(dst, src, size_ * sizeof(Dtype),  //
+            cudaMemcpyDeviceToDevice, cudaStreamDefault));
+        CUDA_CHECK(cudaStreamSynchronize(cudaStreamDefault));
+        parent_->queue_.push(this);
+    } 
+    else 
+    {
+        // Loss functions divide gradients by the batch size, so to compensate
+        // for split batch, the root solver divides by number of solvers.
+        caffe_gpu_scal(size_, Dtype(1.0 / Caffe::solver_count()), diff_);
+    }
 #endif
 }
 
 template<typename Dtype>
 void P2PSync<Dtype>::Prepare(const vector<int>& gpus,
-            vector<shared_ptr<P2PSync<Dtype> > >* syncs) {
-  // Pair devices for map-reduce synchronization
-  vector<DevicePair> pairs;
-  DevicePair::compute(gpus, &pairs);
-  ostringstream s;
-  for (int i = 1; i < pairs.size(); ++i) {
-    s << (i == 1 ? "" : ", ") << pairs[i].parent() << ":" << pairs[i].device();
-  }
-  LOG(INFO)<< "GPUs pairs " << s.str();
-
-  SolverParameter param(solver_->param());
-
-  // Build the GPU tree by finding the parent for each solver
-  for (int attempts = 0; attempts < pairs.size(); ++attempts) {
-    for (int i = 1; i < pairs.size(); ++i) {
-      if (!syncs->at(i).get()) {//在没有进行（标志1）那行之前，syncs[i].get()都是0。
-        P2PSync<Dtype>* parent = NULL;
-        for (int j = 0; j < syncs->size(); ++j) {
-          P2PSync<Dtype>* sync = j == 0 ? this : syncs->at(j).get();
-                    //调用这个run函数是在caffe.cpp的int train()函数里。
-          //这里的this指的就是train函数里在调用run函数前一行定义的对象sync。
-          //caffe::P2PSync<float> sync(solver, NULL, solver->param());
-          if (sync) {
-            const SolverParameter& p = sync->solver()->param();
-            if (p.device_id() == pairs[i].parent()) {
-              parent = sync;
-            }
-          }
-        }
-        if (parent) {
-          param.set_device_id(pairs[i].device());
-          syncs->at(i).reset(new P2PSync<Dtype>(solver_, parent, param));
-          parent->children_.push_back((P2PSync<Dtype>*) syncs->at(i).get());
-        }
-      }
+            vector<shared_ptr<P2PSync<Dtype> > >* syncs) 
+{
+    // Pair devices for map-reduce synchronization
+    vector<DevicePair> pairs;
+    DevicePair::compute(gpus, &pairs);
+    ostringstream s;
+    
+    for (int i = 1; i < pairs.size(); ++i) 
+    {
+        s << (i == 1 ? "" : ", ") << pairs[i].parent() << ":" << pairs[i].device();
     }
-  }
+    
+    LOG(INFO)<< "GPUs pairs " << s.str();
 
-  //reset的顺序
-//syncs[1]:GPU1, its parent is "this"
-//syncs[3]:GPU2, its child is "syncs[2]"
-//syncs[2]:GPU3, its parent is "this"
-//syncs[0]没有被赋值，之后也没有被使用。因为它对应的是root_solver:GPU0。
+    SolverParameter param(solver_->param());
+
+    // Build the GPU tree by finding the parent for each solver
+    for (int attempts = 0; attempts < pairs.size(); ++attempts) 
+    {
+        for (int i = 1; i < pairs.size(); ++i) 
+        {   
+            // 在没有进行（标志1）那行之前，syncs[i].get()都是0。
+            if (!syncs->at(i).get()) 
+            {
+                P2PSync<Dtype>* parent = NULL;
+                
+                for (int j = 0; j < syncs->size(); ++j) 
+                {
+                    P2PSync<Dtype>* sync = j == 0 ? this : syncs->at(j).get();
+
+                    //调用这个run函数是在caffe.cpp的int train()函数里。
+                    //这里的this指的就是train函数里在调用run函数前一行定义的对象sync。
+                    //caffe::P2PSync<float> sync(solver, NULL, solver->param());
+                    if (sync) 
+                    {
+                        const SolverParameter& p = sync->solver()->param();
+
+                        if (p.device_id() == pairs[i].parent()) 
+                        {
+                            parent = sync;
+                        }
+                    }
+                }
+                
+                if (parent) 
+                {
+                    param.set_device_id(pairs[i].device());
+                    syncs->at(i).reset(new P2PSync<Dtype>(solver_, parent, param));
+                    parent->children_.push_back((P2PSync<Dtype>*) syncs->at(i).get());
+                }
+            }
+        }
+    }
+
+    //reset的顺序
+    //syncs[1]:GPU1, its parent is "this"
+    //syncs[3]:GPU2, its child is "syncs[2]"
+    //syncs[2]:GPU3, its parent is "this"
+    //syncs[0]没有被赋值，之后也没有被使用。因为它对应的是root_solver:GPU0。
 }
 
 template<typename Dtype>
@@ -455,7 +481,7 @@ void P2PSync<Dtype>::Run(const vector<int>& gpus)
 
     LOG(INFO)<< "Starting Optimization";
 
-    //设有4个gpus。0，1，2，3。computer函数的结果为：
+    // 设有4个gpus。0，1，2，3。computer函数的结果为：
     // [-1,0;0,1;2,3;0,2] <-除了[-1,0]这一对(0是根节点)以外，剩下都是[parent,device]
     for (int i = 1; i < syncs.size(); ++i) 
     {

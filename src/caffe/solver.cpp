@@ -18,12 +18,15 @@ void Solver<Dtype>::SetActionFunction(ActionCallback func) {
 }
 
 template<typename Dtype>
-SolverAction::Enum Solver<Dtype>::GetRequestedAction() {
-  if (action_request_function_) {
-    // If the external request function has been set, call it.
-    return action_request_function_();
-  }
-  return SolverAction::NONE;
+SolverAction::Enum Solver<Dtype>::GetRequestedAction() 
+{
+    if (action_request_function_) 
+    {
+        // If the external request function has been set, call it.
+        return action_request_function_();
+    }
+    
+    return SolverAction::NONE;
 }
 
 // 初始化两个Net类，net_和test_net_，并调用Init()函数 
@@ -310,6 +313,7 @@ void Solver<Dtype>::Step(int iters)
         
         const bool display = param_.display() && iter_ % param_.display() == 0;
         net_->set_debug_info(display && param_.debug_info());
+
         // accumulate the loss and gradient
         Dtype loss = 0;
 
@@ -451,6 +455,7 @@ void Solver<Dtype>::Solve(const char* resume_file)
         Dtype loss;
         net_->Forward(&loss);
 
+        // 更新平滑后的loss
         UpdateSmoothedLoss(loss, start_iter, average_loss);
 
         LOG(INFO) << "Iteration " << iter_ << ", loss = " << smoothed_loss_;
@@ -580,7 +585,7 @@ void Solver<Dtype>::Test(const int test_net_id)
 
     if (requested_early_exit_) 
     {
-        LOG(INFO)     << "Test interrupted.";
+        LOG(INFO) << "Test interrupted.";
         return;
     }
 
@@ -690,17 +695,20 @@ void Solver<Dtype>::Restore(const char* state_file) {
 }
 
 template <typename Dtype>
-void Solver<Dtype>::UpdateSmoothedLoss(Dtype loss, int start_iter,
-    int average_loss) {
-  if (losses_.size() < average_loss) {
-    losses_.push_back(loss);
-    int size = losses_.size();
-    smoothed_loss_ = (smoothed_loss_ * (size - 1) + loss) / size;
-  } else {
-    int idx = (iter_ - start_iter) % average_loss;
-    smoothed_loss_ += (loss - losses_[idx]) / average_loss;
-    losses_[idx] = loss;
-  }
+void Solver<Dtype>::UpdateSmoothedLoss(Dtype loss, int start_iter, int average_loss) 
+{
+    if (losses_.size() < average_loss) 
+    {
+        losses_.push_back(loss);
+        int size = losses_.size();
+        smoothed_loss_ = (smoothed_loss_ * (size - 1) + loss) / size;
+    } 
+    else 
+    {
+        int idx = (iter_ - start_iter) % average_loss;
+        smoothed_loss_ += (loss - losses_[idx]) / average_loss;
+        losses_[idx] = loss;
+    }
 }
 
 INSTANTIATE_CLASS(Solver);

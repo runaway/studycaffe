@@ -1,3 +1,12 @@
----- LayerParameter layer_param_; Matches (2 in 2 files) ----
-Layer.cpp (src\caffe):LayerParameter layer_param_;      // 这个是protobuf文件中存储的layer参数
-Layer.hpp (include\caffe):  LayerParameter layer_param_;
+---- FLAGS_iterations Matches (11 in 1 files) ----
+Caffe.cpp (tools):    LOG(INFO) << "Running for " << FLAGS_iterations << " iterations.";
+Caffe.cpp (tools):    for (int i = 0; i < FLAGS_iterations; ++i) 
+Caffe.cpp (tools):    loss /= FLAGS_iterations;
+Caffe.cpp (tools):        const float mean_score = test_score[i] / FLAGS_iterations;
+Caffe.cpp (tools):  LOG(INFO) << "Testing for " << FLAGS_iterations << " iterations.";
+Caffe.cpp (tools):  for (int j = 0; j < FLAGS_iterations; ++j) {
+Caffe.cpp (tools):      FLAGS_iterations << " ms.";
+Caffe.cpp (tools):      FLAGS_iterations << " ms.";
+Caffe.cpp (tools):    FLAGS_iterations << " ms.";
+Caffe.cpp (tools):    FLAGS_iterations << " ms.";
+Caffe.cpp (tools):    FLAGS_iterations << " ms.";
