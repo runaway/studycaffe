@@ -834,20 +834,27 @@ void Net<Dtype>::AppendParam(const NetParameter& param, const int layer_id,
 
 */
 template <typename Dtype>
-Dtype Net<Dtype>::ForwardFromTo(int start, int end) {
-  CHECK_GE(start, 0);
-  CHECK_LT(end, layers_.size());
-  Dtype loss = 0;
-  for (int i = start; i <= end; ++i) {
-    // top_vecs_[i]对于第i层，插入当前blob的指针
-    // LOG(ERROR) << "Forwarding " << layer_names_[i];
-    Dtype layer_loss = layers_[i]->Forward(bottom_vecs_[i], top_vecs_[i]);
-    loss += layer_loss;
-    if (debug_info_) { ForwardDebugInfo(i); }
-  }
+Dtype Net<Dtype>::ForwardFromTo(int start, int end) 
+{
+    CHECK_GE(start, 0);
+    CHECK_LT(end, layers_.size());
+    Dtype loss = 0;
+    
+    for (int i = start; i <= end; ++i) 
+    {
+        // top_vecs_[i]对于第i层，插入当前blob的指针
+        // LOG(ERROR) << "Forwarding " << layer_names_[i];
+        Dtype layer_loss = layers_[i]->Forward(bottom_vecs_[i], top_vecs_[i]);
+        loss += layer_loss;
+        
+        if (debug_info_) 
+        { 
+            ForwardDebugInfo(i); 
+        }
+    }
 
-  // 对于非loss层都会返回0
-  return loss;
+    // 对于非loss层都会返回0
+    return loss;
 }
 
 template <typename Dtype>
@@ -864,31 +871,40 @@ Dtype Net<Dtype>::ForwardTo(int end) {
 
 */
 template <typename Dtype>
-const vector<Blob<Dtype>*>& Net<Dtype>::Forward(Dtype* loss) {
-  if (loss != NULL) {
-    *loss = ForwardFromTo(0, layers_.size() - 1);
-  } else {
-    ForwardFromTo(0, layers_.size() - 1);
-  }
-  return net_output_blobs_;
+const vector<Blob<Dtype>*>& Net<Dtype>::Forward(Dtype* loss) 
+{
+    if (loss != NULL) 
+    {
+        *loss = ForwardFromTo(0, layers_.size() - 1);
+    } 
+    else 
+    {
+        ForwardFromTo(0, layers_.size() - 1);
+    }
+    
+    return net_output_blobs_;
 }
 
 /*
 
 */
-// 把网络输入层的blob读到net_input_blobs_，然后进行前馈，计算出loss。Forward的重载，只是输入层的blob以string的格式传入。 
+// 把网络输入层的blob读到net_input_blobs_，然后进行前馈，计算出loss。Forward的
+// 重载，只是输入层的blob以string的格式传入。 
 template <typename Dtype>
 const vector<Blob<Dtype>*>& Net<Dtype>::Forward(
-    const vector<Blob<Dtype>*> & bottom, Dtype* loss) {
-  LOG_EVERY_N(WARNING, 1000) << "DEPRECATED: Forward(bottom, loss) "
+    const vector<Blob<Dtype>*> & bottom, Dtype* loss) 
+{
+    LOG_EVERY_N(WARNING, 1000) << "DEPRECATED: Forward(bottom, loss) "
       << "will be removed in a future version. Use Forward(loss).";
 
-  // 从上面solver.cpp可见bottom.size()为0
-  // Copy bottom to net bottoms
-  for (int i = 0; i < bottom.size(); ++i) {
-    net_input_blobs_[i]->CopyFrom(*bottom[i]);
-  }
-  return Forward(loss);
+    // 从上面solver.cpp可见bottom.size()为0
+    // Copy bottom to net bottoms
+    for (int i = 0; i < bottom.size(); ++i) 
+    {
+        net_input_blobs_[i]->CopyFrom(*bottom[i]);
+    }
+    
+    return Forward(loss);
 }
 
 /*

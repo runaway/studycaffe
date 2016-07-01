@@ -461,35 +461,45 @@ int time() {
 }
 RegisterBrewFunction(time);
 
-int main(int argc, char** argv) {
-  // Print output to stderr (while still logging).
-  FLAGS_alsologtostderr = 1;
-  // Set version
-  gflags::SetVersionString(AS_STRING(CAFFE_VERSION));
-  // Usage message.
-  gflags::SetUsageMessage("command line brew\n"
-      "usage: caffe <command> <args>\n\n"
-      "commands:\n"
-      "  train           train or finetune a model\n"
-      "  test            score a model\n"
-      "  device_query    show GPU diagnostic information\n"
-      "  time            benchmark model execution time");
-  // Run tool or show usage.
-  caffe::GlobalInit(&argc, &argv);
+int main(int argc, char** argv) 
+{
+    // Print output to stderr (while still logging).
+    FLAGS_alsologtostderr = 1;
+    
+    // Set version
+    gflags::SetVersionString(AS_STRING(CAFFE_VERSION));
+    
+    // Usage message.
+    gflags::SetUsageMessage("command line brew\n"
+    "usage: caffe <command> <args>\n\n"
+    "commands:\n"
+    "  train           train or finetune a model\n"
+    "  test            score a model\n"
+    "  device_query    show GPU diagnostic information\n"
+    "  time            benchmark model execution time");
+    
+    // Run tool or show usage.
+    caffe::GlobalInit(&argc, &argv);
 
-  // （1）main()函数中，输入的train，test，device_query，time。 通过下面两行进入程序。
-  if (argc == 2) {
+    // （1）main()函数中，输入的train，test，device_query，time。 通过下面两行进入程序。
+    if (argc == 2) 
+    {
 #ifdef WITH_PYTHON_LAYER
-    try {
+        try 
+        {
 #endif
-      return GetBrewFunction(caffe::string(argv[1]))();
+            return GetBrewFunction(caffe::string(argv[1]))();
 #ifdef WITH_PYTHON_LAYER
-    } catch (bp::error_already_set) {
-      PyErr_Print();
-      return 1;
+        } 
+        catch (bp::error_already_set) 
+        {
+            PyErr_Print();
+            return 1;
+        }
+#endif
+    } 
+    else 
+    {
+        gflags::ShowUsageWithFlagsRestrict(argv[0], "tools/caffe");
     }
-#endif
-  } else {
-    gflags::ShowUsageWithFlagsRestrict(argv[0], "tools/caffe");
-  }
 }

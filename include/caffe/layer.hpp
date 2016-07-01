@@ -606,67 +606,103 @@ SetLossÊÇ·Ç³£ÖØÒªµÄÒ»¸ö²½Öè£¬ÊÇ±»SetUpµ÷ÓÃÀ´³õÊ¼»¯top bottomµÄweights£¬²¢ÇÒ´æ´¢·
 
   DISABLE_COPY_AND_ASSIGN(Layer);
 };  // class Layer
+
 // Forward and backward wrappers. You should implement the cpu and  
 // gpu specific implementations instead, and should not change these  
 // functions.  
-// ÓĞÒ»µãĞèÒª¼Ç×¡µÄÊÇ£ºÔÚÄ£°åÀàLayerµÄforwardº¯ÊıÀïÃæ£¬»áÔÙ´Îµ÷ÓÃµ÷ÓÃReshape()º¯Êı£¬Ò²¾ÍÊÇËµ£¬¼´Ê¹ÎÒÃÇÃ¿´Îµü´úÃ¿¸öminibatchÀïµÄÍ¼Ïñ£¨»òÕßÌØÕ÷£©µÄshape²»Ò»ÖÂ£¬Ò²Ã»ÓĞ¹ØÏµ£¬  
-// ÒòÎªÔÚÕæÕıµ÷ÓÃforward_cpu / forward_gpu Ö®Ç°¶¼»áÖØĞÂReshape£»SetUpÀïÃæµÄReshapeÖ»ÊÇÉèÖÃÁË³õÊ¼µÄTop blobs µÄshape  
+// ÓĞÒ»µãĞèÒª¼Ç×¡µÄÊÇ£ºÔÚÄ£°åÀàLayerµÄforwardº¯ÊıÀïÃæ£¬»áÔÙ´Îµ÷ÓÃµ÷ÓÃReshape()
+// º¯Êı£¬Ò²¾ÍÊÇËµ£¬¼´Ê¹ÎÒÃÇÃ¿´Îµü´úÃ¿¸öminibatchÀïµÄÍ¼Ïñ£¨»òÕßÌØÕ÷£©µÄshape²»Ò»
+// ÖÂ£¬Ò²Ã»ÓĞ¹ØÏµ£¬  
+// ÒòÎªÔÚÕæÕıµ÷ÓÃforward_cpu / forward_gpu Ö®Ç°¶¼»áÖØĞÂReshape£»SetUpÀïÃæµÄ
+// ReshapeÖ»ÊÇÉèÖÃÁË³õÊ¼µÄTop blobs µÄshape  
 
 /* 
-Ç°´«µ÷ÓÃ¶ÔÓ¦µÄForward_cpu»òÕßForward_gpu¶øÎÒÃÇÖªµÀForward_cpuÊÇ´¿Ğéº¯Êı£¬±ØĞëÒªÊµ¶øForward_gpuÊÇĞéº¯Êı£¬Èç¹û²»ÊµÏÖ¾Íµ÷ÓÃ Forward_cpuº¯ÊıÁË¡£Ç°´«£¨Äã±ØĞëÊµÏÖ×Ô¼ºµÄForward_cpu£¬ÊµÏÖForward_gpuÊÇ¿ÉÑ¡µÄ£© 
+Ç°´«µ÷ÓÃ¶ÔÓ¦µÄForward_cpu»òÕßForward_gpu¶øÎÒÃÇÖªµÀForward_cpuÊÇ´¿Ğéº¯Êı£¬±ØĞëÒª
+Êµ¶øForward_gpuÊÇĞéº¯Êı£¬Èç¹û²»ÊµÏÖ¾Íµ÷ÓÃ Forward_cpuº¯ÊıÁË¡£Ç°´«£¨Äã±ØĞëÊµÏÖ×Ô
+¼ºµÄForward_cpu£¬ÊµÏÖForward_gpuÊÇ¿ÉÑ¡µÄ£© 
 */  
 template <typename Dtype>  
 inline Dtype Layer<Dtype>::Forward(const vector<Blob<Dtype>*>& bottom,  
-    const vector<Blob<Dtype>*>& top) {  
-  // Lock during forward to ensure sequential forward  
-  // Ç°´«µÄÊ±ºòĞèÒªÉÏËø£¬°´ÕÕË³ĞòÖ´ĞĞ²ÅĞĞ£¬·ñÔò¾ÍÂÒÁË  
-  Lock();  
-  Dtype loss = 0;  
-  // ¸ù¾İbottomÉèÖÃtopµÄĞÎ×´  
-  Reshape(bottom, top);  
-  // ÉèÖÃÔËĞĞÄ£Ê½CPU or GPU  
-  switch (Caffe::mode()) {  
-  case Caffe::CPU:  
-    // µ÷ÓÃCPUµÄÇ°´«  
-    Forward_cpu(bottom, top);  
-    // Ç°´«¼ÆËãÍêÖ®ºó¼ÆËãËğÊ§£¨Ö»ÓĞ×îºóÒ»²ã²Å½øĞĞ¼ÆËã£¬ÆäÓà²ã¶¼²»ÓÃ£©  
-    for (int top_id = 0; top_id < top.size(); ++top_id) {  
-      if (!this->loss(top_id)) { continue; }  
-      const int count = top[top_id]->count();  
-      // »ñÈ¡Ç°´«µÄÊı¾İ  
-      const Dtype* data = top[top_id]->cpu_data();  
-      // »ñÈ¡Ìİ¶È£¨\frac{\partial Loss}{\partial net}£©  
-      const Dtype* loss_weights = top[top_id]->cpu_diff(); 
+    const vector<Blob<Dtype>*>& top) 
+{  
+    // Lock during forward to ensure sequential forward  
+    // Ç°´«µÄÊ±ºòĞèÒªÉÏËø£¬°´ÕÕË³ĞòÖ´ĞĞ²ÅĞĞ£¬·ñÔò¾ÍÂÒÁË  
+    Lock();  
+    Dtype loss = 0; 
+    
+    // ¸ù¾İbottomÉèÖÃtopµÄĞÎ×´  
+    Reshape(bottom, top);  
+    
+    // ÉèÖÃÔËĞĞÄ£Ê½CPU or GPU  
+    switch (Caffe::mode()) 
+    {  
+    
+    case Caffe::CPU:  
+        
+        // µ÷ÓÃCPUµÄÇ°´«  
+        Forward_cpu(bottom, top);  
+        
+        // Ç°´«¼ÆËãÍêÖ®ºó¼ÆËãËğÊ§£¨Ö»ÓĞ×îºóÒ»²ã²Å½øĞĞ¼ÆËã£¬ÆäÓà²ã¶¼²»ÓÃ£©  
+        for (int top_id = 0; top_id < top.size(); ++top_id) 
+        {  
+            if (!this->loss(top_id)) 
+            {
+                continue; 
+            }  
+            
+            const int count = top[top_id]->count();  
+            
+            // »ñÈ¡Ç°´«µÄÊı¾İ  
+            const Dtype* data = top[top_id]->cpu_data();  
+            
+            // »ñÈ¡Ìİ¶È£¨\frac{\partial Loss}{\partial net}£©  
+            const Dtype* loss_weights = top[top_id]->cpu_diff(); 
 
-      //ÕâÀïµÄloss_weightsÎÒ¾õµÃÓ¦¸ÃÊÇSetLossWeights()·½·¨ÖĞÄ£°åº¯Êıcaffe_set()Ëù³õÊ¼»¯µÄloss_weight  
-      // dataÓëloss_weightµÄµã»ı£¬¼´µÃËğÊ§º¯Êı¹ØÓÚµ±Ç°²ãÈ¨ÖØµÄÆ«µ¼ÁË  
-    // \frac{\partial Loss}{\partial net} * \frac{\partial net}{\frac{W}}  
-    // = \frac{\partial Loss}{\partial W}  
-      loss += caffe_cpu_dot(count, data, loss_weights);  
-    }  
+            // ÕâÀïµÄloss_weightsÎÒ¾õµÃÓ¦¸ÃÊÇSetLossWeights()·½·¨ÖĞÄ£°åº¯Êı
+            // caffe_set()Ëù³õÊ¼»¯µÄloss_weight  
+            // dataÓëloss_weightµÄµã»ı£¬¼´µÃËğÊ§º¯Êı¹ØÓÚµ±Ç°²ãÈ¨ÖØµÄÆ«µ¼ÁË  
+            // \frac{\partial Loss}{\partial net} * \frac{\partial net}{\frac{W}}  
+            // = \frac{\partial Loss}{\partial W}  
+            loss += caffe_cpu_dot(count, data, loss_weights);  
+        }  
+        
     break;  
-  case Caffe::GPU:  
-    // GPUÇ°´«  
-    Forward_gpu(bottom, top);  
+    
+    case Caffe::GPU:  
+        
+        // GPUÇ°´«  
+        Forward_gpu(bottom, top);  
+        
 #ifndef CPU_ONLY  
-    // Í¬ÉÏ£¬Ö»²»¹ıÕâÀïÓÃGPUÀ´¼ÆËãµã»ıÁË  
-    for (int top_id = 0; top_id < top.size(); ++top_id) {  
-      if (!this->loss(top_id)) { continue; }  
-      const int count = top[top_id]->count();  
-      // »ñÈ¡GPUÉÏµÄÊı¾İ  
-      const Dtype* data = top[top_id]->gpu_data();  
-      const Dtype* loss_weights = top[top_id]->gpu_diff();  
-      Dtype blob_loss = 0;  
-      caffe_gpu_dot(count, data, loss_weights, &blob_loss);  
-      loss += blob_loss;  
-    }  
+
+        // Í¬ÉÏ£¬Ö»²»¹ıÕâÀïÓÃGPUÀ´¼ÆËãµã»ıÁË  
+        for (int top_id = 0; top_id < top.size(); ++top_id) 
+        {  
+            if (!this->loss(top_id)) 
+            { 
+                continue; 
+            }  
+            
+            const int count = top[top_id]->count();  
+
+            // »ñÈ¡GPUÉÏµÄÊı¾İ  
+            const Dtype* data = top[top_id]->gpu_data();  
+            const Dtype* loss_weights = top[top_id]->gpu_diff();  
+            Dtype blob_loss = 0;  
+            caffe_gpu_dot(count, data, loss_weights, &blob_loss);  
+            loss += blob_loss;  
+        }  
 #endif
+
     break;
-  default:
-    LOG(FATAL) << "Unknown caffe mode.";
-  }
-  Unlock();
-  return loss;
+
+    default:
+        
+        LOG(FATAL) << "Unknown caffe mode.";
+    }
+    Unlock();
+    
+    return loss;
 }
 
 // ·´´«µÄµÀÀíÓëÇ°´«µÄµÀÀíºÜÀàËÆ

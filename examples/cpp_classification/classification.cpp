@@ -265,7 +265,7 @@ void Classifier::WrapInputLayer(std::vector<cv::Mat>* input_channels)
 void Classifier::Preprocess(const cv::Mat& img,
                             std::vector<cv::Mat>* input_channels) 
 {
-    // 保证输入图片的channels与 网络channels一致
+    // 保证输入图片的channels与网络channels一致
     /* Convert the input image to the input image format of the network. */
     cv::Mat sample;
 
@@ -285,17 +285,25 @@ void Classifier::Preprocess(const cv::Mat& img,
     cv::Mat sample_resized;
     
     if (sample.size() != input_geometry_)
-    cv::resize(sample, sample_resized, input_geometry_);
+    {
+        cv::resize(sample, sample_resized, input_geometry_);
+    }
     else
-    sample_resized = sample;
+    {
+        sample_resized = sample;
+    }
     
     // 保证数据类型一致为 float 
     cv::Mat sample_float;
     
     if (num_channels_ == 3)
-    sample_resized.convertTo(sample_float, CV_32FC3);
+    {
+        sample_resized.convertTo(sample_float, CV_32FC3);
+    }
     else
-    sample_resized.convertTo(sample_float, CV_32FC1);
+    {
+        sample_resized.convertTo(sample_float, CV_32FC1);
+    }
     
     // 减去均值得到sample_normalized 
     cv::Mat sample_normalized;

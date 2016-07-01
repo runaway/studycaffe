@@ -1,17 +1,26 @@
 #include <boost/thread.hpp>
 #include "caffe/layer.hpp"
 /*
-Layer（层）是Caffe中最庞大最繁杂的模块。由于Caffe强调模块化设计，因此只允许每个layer完成一类特定的计算，例如convolution操作、pooling、非线性变换、内积运算，以及数据加载、归一化和损失计算等。layer这个类可以说是里面最终的一个基本类了，深度网络呢就是一层一层的layer，相互之间通过blob传输数据连接起来。
+Layer（层）是Caffe中最庞大最繁杂的模块。由于Caffe强调模块化设计，因此只允许每个
+layer完成一类特定的计算，例如convolution操作、pooling、非线性变换、内积运算，以
+及数据加载、归一化和损失计算等。layer这个类可以说是里面最终的一个基本类了，深度
+网络呢就是一层一层的layer，相互之间通过blob传输数据连接起来。
 我们先看一张图：
 
 然后我们从头文件看看：
 Caffe中与Layer相关的头文件有7个，
 layer.hpp: 父类Layer，定义所有layer的基本接口。
-data_layers.hpp: 继承自父类Layer，定义与输入数据操作相关的子Layer，例如DataLayer，HDF5DataLayer和ImageDataLayer等。
-vision_layers.hpp: 继承自父类Layer，定义与特征表达相关的子Layer，例如ConvolutionLayer，PoolingLayer和LRNLayer等。
-neuron_layers.hpp: 继承自父类Layer，定义与非线性变换相关的子Layer，例如ReLULayer，TanHLayer和SigmoidLayer等。
-loss_layers.hpp: 继承自父类Layer，定义与输出误差计算相关的子Layer，例如EuclideanLossLayer，SoftmaxWithLossLayer和HingeLossLayer等。
-common_layers.hpp: 继承自父类Layer，定义与中间结果数据变形、逐元素操作相关的子Layer，例如ConcatLayer，InnerProductLayer和SoftmaxLayer等。
+data_layers.hpp: 继承自父类Layer，定义与输入数据操作相关的子Layer，例如DataLayer，
+HDF5DataLayer和ImageDataLayer等。
+vision_layers.hpp: 继承自父类Layer，定义与特征表达相关的子Layer，例如ConvolutionLayer，
+PoolingLayer和LRNLayer等。
+neuron_layers.hpp: 继承自父类Layer，定义与非线性变换相关的子Layer，例如ReLULayer，
+TanHLayer和SigmoidLayer等。
+loss_layers.hpp: 继承自父类Layer，定义与输出误差计算相关的子Layer，例如EuclideanLossLayer，
+SoftmaxWithLossLayer和HingeLossLayer等。
+common_layers.hpp: 继承自父类Layer，定义与中间结果数据变形、逐元素操作相关的子
+Layer，例如ConcatLayer，InnerProductLayer和SoftmaxLayer等。
+
 layer_factory.hpp: Layer工厂模式类，负责维护现有可用layer和相应layer构造方法的映射表。
 1.About
 layer.hpp
@@ -22,7 +31,8 @@ layer.hpp
 loss_layers.hpp
 neuron_layers.hpp
 vision_layers.hpp
-其中``layer.hpp是抽象出来的基类，其他都是在其基础上的继承，也即剩下的五个头文件和上图中的五个部分。在layer.hpp`头文件里，包含了这几个头文件：
+其中``layer.hpp是抽象出来的基类，其他都是在其基础上的继承，也即剩下的五个头文件
+和上图中的五个部分。在layer.hpp`头文件里，包含了这几个头文件：
 #include "caffe/blob.hpp"
 #include "caffe/common.hpp"
 #include "caffe/proto/caffe.pb.h"
@@ -33,9 +43,12 @@ vision_layers.hpp
 #define STUB_GPU_BACKWARD(classname, funcname)
 layer中有这三个主要参数：
 LayerParameter layer_param_;      // 这个是protobuf文件中存储的layer参数
-vector<share_ptr<Blob<Dtype>>> blobs_;        // 这个存储的是layer的参数，在程序中用的
-vector<bool> param_propagate_down_;        // 这个bool表示是否计算各个blob参数的diff，即传播误差
-Layer类的构建函数explicit Layer(const LayerParameter& param) : layer_param_(param)会尝试从protobuf文件读取参数。其三个主要接口：
+vector<share_ptr<Blob<Dtype>>> blobs_;        // 这个存储的是layer的参数，在程
+序中用的
+vector<bool> param_propagate_down_;        // 这个bool表示是否计算各个blob参数
+的diff，即传播误差
+Layer类的构建函数explicit Layer(const LayerParameter& param) : layer_param_(param)
+会尝试从protobuf文件读取参数。其三个主要接口：
 virtual void SetUp(const vector<Blob<Dtype>*>& bottom, vector<Blob<Dtype>*>* top)
 inline Dtype Forward(const vector<Blob<Dtype>*>& bottom, vector<Blob<Dtype>*>* top);
 inline void Backward(const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down, const <Blob<Dtype>*>* bottom);
