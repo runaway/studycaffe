@@ -1,12 +1,100 @@
----- FLAGS_iterations Matches (11 in 1 files) ----
-Caffe.cpp (tools):    LOG(INFO) << "Running for " << FLAGS_iterations << " iterations.";
-Caffe.cpp (tools):    for (int i = 0; i < FLAGS_iterations; ++i) 
-Caffe.cpp (tools):    loss /= FLAGS_iterations;
-Caffe.cpp (tools):        const float mean_score = test_score[i] / FLAGS_iterations;
-Caffe.cpp (tools):  LOG(INFO) << "Testing for " << FLAGS_iterations << " iterations.";
-Caffe.cpp (tools):  for (int j = 0; j < FLAGS_iterations; ++j) {
-Caffe.cpp (tools):      FLAGS_iterations << " ms.";
-Caffe.cpp (tools):      FLAGS_iterations << " ms.";
-Caffe.cpp (tools):    FLAGS_iterations << " ms.";
-Caffe.cpp (tools):    FLAGS_iterations << " ms.";
-Caffe.cpp (tools):    FLAGS_iterations << " ms.";
+---- NeuronLayer Matches (98 in 20 files) ----
+Absval_layer.cpp (src\caffe\layers):  NeuronLayer<Dtype>::LayerSetUp(bottom, top);
+Absval_layer.hpp (include\caffe\layers):class AbsValLayer : public NeuronLayer<Dtype> {
+Absval_layer.hpp (include\caffe\layers):      : NeuronLayer<Dtype>(param) {}
+Bnll_layer.hpp (include\caffe\layers):class BNLLLayer : public NeuronLayer<Dtype> {
+Bnll_layer.hpp (include\caffe\layers):      : NeuronLayer<Dtype>(param) {}
+Dropout_layer.cpp (src\caffe\layers):  NeuronLayer<Dtype>::LayerSetUp(bottom, top);
+Dropout_layer.cpp (src\caffe\layers):  NeuronLayer<Dtype>::Reshape(bottom, top);
+Dropout_layer.hpp (include\caffe\layers):class DropoutLayer : public NeuronLayer<Dtype> {
+Dropout_layer.hpp (include\caffe\layers):      : NeuronLayer<Dtype>(param) {}
+Elu_layer.hpp (include\caffe\layers):class ELULayer : public NeuronLayer<Dtype> {
+Elu_layer.hpp (include\caffe\layers):      : NeuronLayer<Dtype>(param) {}
+Exp_layer.cpp (src\caffe\layers):  NeuronLayer<Dtype>::LayerSetUp(bottom, top);
+Exp_layer.hpp (include\caffe\layers):class ExpLayer : public NeuronLayer<Dtype> {
+Exp_layer.hpp (include\caffe\layers):      : NeuronLayer<Dtype>(param) {}
+Layer.cpp (src\caffe):输入了data后，就要计算了，比如常见的sigmoid、tanh等等，这些都计算操作被抽象成了neuron_layers.hpp里面的类NeuronLayer，这个层只负责具体的计算，因此明确定义了输入ExactNumBottomBlobs()和ExactNumTopBlobs()都是常量1,即输入一个blob，输出一个blob。
+Neuron_layer.cpp (src\caffe\layers):void NeuronLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
+Neuron_layer.cpp (src\caffe\layers):INSTANTIATE_CLASS(NeuronLayer);
+Neuron_layer.hpp (include\caffe\layers):neuron_layers.hpp里面的类NeuronLayer，这个层只负责具体的计算，因此明确定义了输
+Neuron_layer.hpp (include\caffe\layers):class NeuronLayer : public Layer<Dtype> {
+Neuron_layer.hpp (include\caffe\layers):  explicit NeuronLayer(const LayerParameter& param)
+Power_layer.cpp (src\caffe\layers):  NeuronLayer<Dtype>::LayerSetUp(bottom, top);
+Power_layer.hpp (include\caffe\layers):class PowerLayer : public NeuronLayer<Dtype> {
+Power_layer.hpp (include\caffe\layers):      : NeuronLayer<Dtype>(param) {}
+Prelu_layer.hpp (include\caffe\layers):class PReLULayer : public NeuronLayer<Dtype> {
+Prelu_layer.hpp (include\caffe\layers):      : NeuronLayer<Dtype>(param) {}
+Relu_layer.hpp (include\caffe\layers):class ReLULayer : public NeuronLayer<Dtype> {
+Relu_layer.hpp (include\caffe\layers):      : NeuronLayer<Dtype>(param) {}
+Sigmoid_layer.hpp (include\caffe\layers):class SigmoidLayer : public NeuronLayer<Dtype> {
+Sigmoid_layer.hpp (include\caffe\layers):      : NeuronLayer<Dtype>(param) {}
+Tanh_layer.hpp (include\caffe\layers):class TanHLayer : public NeuronLayer<Dtype> {
+Tanh_layer.hpp (include\caffe\layers):      : NeuronLayer<Dtype>(param) {}
+Test_neuron_layer.cpp (src\caffe\test):class NeuronLayerTest : public MultiDeviceTest<TypeParam> {
+Test_neuron_layer.cpp (src\caffe\test):  NeuronLayerTest()
+Test_neuron_layer.cpp (src\caffe\test):  virtual ~NeuronLayerTest() { delete blob_bottom_; delete blob_top_; }
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST_CASE(NeuronLayerTest, TestDtypesAndDevices);
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestAbsVal) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestAbsGradient) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestReLU) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestReLUGradient) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestReLUWithNegativeSlope) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestReLUGradientWithNegativeSlope) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestELU) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestELUasReLU) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestELUGradient) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestELUasReLUGradient) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestSigmoid) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestSigmoidGradient) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestTanH) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestTanHGradient) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestExpLayer) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestExpGradient) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestExpLayerBase2) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestExpGradientBase2) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestExpLayerBase2Shift1) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestExpGradientBase2Shift1) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestExpLayerBase2Scale3) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestExpGradientBase2Scale3) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestExpLayerBase2Shift1Scale3) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestExpGradientBase2Shift1Scale3) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestLogLayer) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestLogGradient) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestLogLayerBase2) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestLogGradientBase2) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestLogLayerBase2Shift1) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestLogGradientBase2Shift1) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestLogLayerBase2Scale3) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestLogGradientBase2Scale3) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestLogLayerBase2Shift1Scale3) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestLogGradientBase2Shift1Scale3) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestDropoutHalf) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestDropoutThreeQuarters) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestDropoutTestPhase) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestDropoutGradient) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestDropoutGradientTest) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestBNLL) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestBNLLGradient) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestPReLUParam) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestPReLUForward) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestPReLUForwardChannelShared) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestPReLUGradient) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestPReLUGradientChannelShared) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestPReLUConsistencyReLU) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(NeuronLayerTest, TestPReLUInPlace) {
+Test_neuron_layer.cpp (src\caffe\test):class CuDNNNeuronLayerTest : public GPUDeviceTest<Dtype> {
+Test_neuron_layer.cpp (src\caffe\test):  CuDNNNeuronLayerTest()
+Test_neuron_layer.cpp (src\caffe\test):  virtual ~CuDNNNeuronLayerTest() { delete blob_bottom_; delete blob_top_; }
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST_CASE(CuDNNNeuronLayerTest, TestDtypes);
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(CuDNNNeuronLayerTest, TestReLUCuDNN) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(CuDNNNeuronLayerTest, TestReLUGradientCuDNN) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(CuDNNNeuronLayerTest, TestReLUWithNegativeSlopeCuDNN) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(CuDNNNeuronLayerTest, TestReLUGradientWithNegativeSlopeCuDNN) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(CuDNNNeuronLayerTest, TestSigmoidCuDNN) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(CuDNNNeuronLayerTest, TestSigmoidGradientCuDNN) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(CuDNNNeuronLayerTest, TestTanHCuDNN) {
+Test_neuron_layer.cpp (src\caffe\test):TYPED_TEST(CuDNNNeuronLayerTest, TestTanHGradientCuDNN) {
+Threshold_layer.cpp (src\caffe\layers):  NeuronLayer<Dtype>::LayerSetUp(bottom, top);
+Threshold_layer.hpp (include\caffe\layers):class ThresholdLayer : public NeuronLayer<Dtype> {
+Threshold_layer.hpp (include\caffe\layers):      : NeuronLayer<Dtype>(param) {}
+---- on_epoch_finished Matches (0 in 0 files) ----
