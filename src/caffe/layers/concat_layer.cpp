@@ -4,7 +4,9 @@
 #include "caffe/util/math_functions.hpp"
 
 /*
-concat_layer 用来实现两个或者多个blob的链接，支持在num 维度上的链接（concat_dim = 0 : (n1+n2+...+nk)?c?h?w ）和channel维度上的链接（concat_dim = 1 : n?(c1+c2+...+ck)?h?w）。
+concat_layer 用来实现两个或者多个blob的链接，支持在num 维度上的链接
+（concat_dim = 0 : (n1+n2+...+nk)?c?h?w ）和channel维度上的链接
+（concat_dim = 1 : n?(c1+c2+...+ck)?h?w）。
 */
 
 namespace caffe {
@@ -59,47 +61,61 @@ void ConcatLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
 
 template <typename Dtype>
 void ConcatLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
-      const vector<Blob<Dtype>*>& top) {
-  if (bottom.size() == 1) { return; }
-  Dtype* top_data = top[0]->mutable_cpu_data();
-  int offset_concat_axis = 0;
-  const int top_concat_axis = top[0]->shape(concat_axis_);
+      const vector<Blob<Dtype>*>& top) 
+{
+    if (bottom.size() == 1) { return; }
+    
+    Dtype* top_data = top[0]->mutable_cpu_data();
+    int offset_concat_axis = 0;
+    const int top_concat_axis = top[0]->shape(concat_axis_);
 
-  
-  for (int i = 0; i < bottom.size(); ++i) {
-    // 遍历所有输入bottom
-    const Dtype* bottom_data = bottom[i]->cpu_data();
-    const int bottom_concat_axis = bottom[i]->shape(concat_axis_);
-    for (int n = 0; n < num_concats_; ++n) {
-      caffe_copy(bottom_concat_axis * concat_input_size_,
-          bottom_data + n * bottom_concat_axis * concat_input_size_,
-          // 把 各个bottom data 拷贝到输出 top data 的对应位置
-          top_data + (n * top_concat_axis + offset_concat_axis)
-              * concat_input_size_);
+
+    for (int i = 0; i < bottom.size(); ++i) 
+    {
+        // 遍历所有输入bottom
+        const Dtype* bottom_data = bottom[i]->cpu_data();
+        const int bottom_concat_axis = bottom[i]->shape(concat_axis_);
+
+        for (int n = 0; n < num_concats_; ++n) 
+        {
+            // 把各个bottom data拷贝到输出top data的对应位置
+            caffe_copy(bottom_concat_axis * concat_input_size_,
+                bottom_data + n * bottom_concat_axis * concat_input_size_,
+                top_data + (n * top_concat_axis + offset_concat_axis) * concat_input_size_);
+        }
+        
+        offset_concat_axis += bottom_concat_axis;
     }
-    offset_concat_axis += bottom_concat_axis;
-  }
 }
 
 template <typename Dtype>
 void ConcatLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
-      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
-  if (bottom.size() == 1) { return; }
-  const Dtype* top_diff = top[0]->cpu_diff();
-  int offset_concat_axis = 0;
-  const int top_concat_axis = top[0]->shape(concat_axis_);
-  for (int i = 0; i < bottom.size(); ++i) {
-    const int bottom_concat_axis = bottom[i]->shape(concat_axis_);
-    if (propagate_down[i]) {
-      Dtype* bottom_diff = bottom[i]->mutable_cpu_diff();
-      for (int n = 0; n < num_concats_; ++n) {
-        caffe_copy(bottom_concat_axis * concat_input_size_, top_diff +
-            (n * top_concat_axis + offset_concat_axis) * concat_input_size_,
-            bottom_diff + n * bottom_concat_axis * concat_input_size_);
-      }
-    }
-    offset_concat_axis += bottom_concat_axis;
-  } // 对 diff 做和data相同的链接
+      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) 
+{
+    if (bottom.size() == 1) { return; }
+    
+    const Dtype* top_diff = top[0]->cpu_diff();
+    int offset_concat_axis = 0;
+    const int top_concat_axis = top[0]->shape(concat_axis_);
+    
+    for (int i = 0; i < bottom.size(); ++i) 
+    {
+        const int bottom_concat_axis = bottom[i]->shape(concat_axis_);
+
+        if (propagate_down[i]) 
+        {
+            Dtype* bottom_diff = bottom[i]->mutable_cpu_diff();
+            
+            for (int n = 0; n < num_concats_; ++n) 
+            {
+                caffe_copy(bottom_concat_axis * concat_input_size_, 
+                    top_diff + (n * top_concat_axis + offset_concat_axis) * concat_input_size_,
+                    bottom_diff + n * bottom_concat_axis * concat_input_size_);
+            }
+        }
+        
+        offset_concat_axis += bottom_concat_axis;
+    } // 对 diff做和data相同的链接
 }
 
 #ifdef CPU_ONLY

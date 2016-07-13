@@ -52,80 +52,106 @@ namespace caffe {
 template <typename Dtype>
 class Layer;
 
-// LayerResistry的功能很简单，就是将类和对应的字符串类型放入到一个map当中去，以便灵活调用。主要就是注册类的功能
+// LayerResistry的功能很简单，就是将类和对应的字符串类型放入到一个map当中去，以
+// 便灵活调用。主要就是注册类的功能
 template <typename Dtype>
-class LayerRegistry {
- public:
+class LayerRegistry 
+{
+public:
 
- // 函数指针Creator，返回的是Layer<Dtype>类型的指针  
-typedef shared_ptr<Layer<Dtype> > (*Creator)(const LayerParameter&);  
-// CreatorRegistry是字符串与对应的Creator的映射  
-typedef std::map<string, Creator> CreatorRegistry;  
+    // 函数指针Creator，返回的是Layer<Dtype>类型的指针  
+    typedef shared_ptr<Layer<Dtype> > (*Creator)(const LayerParameter&);
+    
+    // CreatorRegistry是字符串与对应的Creator的映射  
+    typedef std::map<string, Creator> CreatorRegistry;  
 
- //typedef见http://www.kuqin.com/language/20090322/41866.html
-  //Creator为一个函数指针，返回类型是shared_ptr<Layer<Dtype> >
-  static CreatorRegistry& Registry() {
-    static CreatorRegistry* g_registry_ = new CreatorRegistry();
-    return *g_registry_;
-  }
-// 给定类型，以及函数指针，加入到注册表 
-  // Adds a creator.
-  static void AddCreator(const string& type, Creator creator) {
-    CreatorRegistry& registry = Registry();
-    CHECK_EQ(registry.count(type), 0)
-        << "Layer type " << type << " already registered.";
-    registry[type] = creator;
-  }
-
-  // Get a layer using a LayerParameter.
-// 3-2给定层的类型，创建层
-static shared_ptr<Layer<Dtype> > CreateLayer(const LayerParameter& param) {  
-  if (Caffe::root_solver()) {  
-    LOG(INFO) << "Creating layer " << param.name();  
-  }  
-  // 从参数中获得类型字符串  
-  const string& type = param.type();  
-  // 获得注册表指针  
-  CreatorRegistry& registry = Registry();  
-  // 测试是否查找到给定type的Creator  
-  CHECK_EQ(registry.count(type), 1) << "Unknown layer type: " << type  
-      << " (known types: " << LayerTypeListString() << ")";  
-
-    //这里大概就直接new了一个新的layer类。DataLayer,ConvolutionLayer,...
-  // 调用对应的层的Creator函数  
-  return registry[type](param);  
-}  
-//3-3返回层的类型列表
-static vector<string> LayerTypeList() {  
-  // 获得注册表  
-  CreatorRegistry& registry = Registry();  
-  vector<string> layer_types;  
-  // 遍历注册表压入layer_types字符串容器  
-  for (typename CreatorRegistry::iterator iter = registry.begin();  
-       iter != registry.end(); ++iter) {  
-    layer_types.push_back(iter->first);  
-  }  
-  return layer_types;  
-}  
-
- private:
-  // 禁止实例化，因为该类都是静态函数，所以是私有的  
-  // Layer registry should never be instantiated - everything is done with its
-  // static variables.
-  LayerRegistry() {}
-
-  static string LayerTypeListString() {
-    vector<string> layer_types = LayerTypeList();
-    string layer_types_str;
-    for (vector<string>::iterator iter = layer_types.begin();
-         iter != layer_types.end(); ++iter) {
-      if (iter != layer_types.begin()) {
-        layer_types_str += ", ";
-      }
-      layer_types_str += *iter;
+    // typedef见http://www.kuqin.com/language/20090322/41866.html
+    // Creator为一个函数指针，返回类型是shared_ptr<Layer<Dtype> >
+    static CreatorRegistry& Registry() 
+    {
+        static CreatorRegistry* g_registry_ = new CreatorRegistry();
+        return *g_registry_;
     }
-    return layer_types_str;
-  }
+    
+    // 给定类型，以及函数指针，加入到注册表 
+    // Adds a creator.
+    static void AddCreator(const string& type, Creator creator) 
+    {
+        CreatorRegistry& registry = Registry();
+        CHECK_EQ(registry.count(type), 0)
+        << "Layer type " << type << " already registered.";
+        registry[type] = creator;
+    }
+
+    // Get a layer using a LayerParameter.
+    // 3-2给定层的类型，创建层
+    static shared_ptr<Layer<Dtype> > CreateLayer(const LayerParameter& param) 
+    {  
+    
+        if (Caffe::root_solver()) 
+        {  
+            LOG(INFO) << "Creating layer " << param.name();  
+        }  
+        
+        // 从参数中获得类型字符串  
+        const string& type = param.type();  
+        
+        // 获得注册表指针  
+        CreatorRegistry& registry = Registry(); 
+        
+        // 测试是否查找到给定type的Creator  
+        CHECK_EQ(registry.count(type), 1) << "Unknown layer type: " << type  
+        << " (known types: " << LayerTypeListString() << ")";  
+
+        //这里大概就直接new了一个新的layer类。DataLayer,ConvolutionLayer,...
+        // 调用对应的层的Creator函数  
+        return registry[type](param);  
+    }  
+
+    // 3-3返回层的类型列表
+    static vector<string> LayerTypeList() 
+    {  
+        // 获得注册表  
+        CreatorRegistry& registry = Registry();  
+        vector<string> layer_types;  
+        
+        // 遍历注册表压入layer_types字符串容器  
+        for (typename CreatorRegistry::iterator iter = registry.begin();  
+             iter != registry.end(); 
+             ++iter) 
+        {  
+            layer_types.push_back(iter->first);  
+        }  
+             
+        return layer_types;  
+    }  
+
+private:
+    
+    // 禁止实例化，因为该类都是静态函数，所以是私有的  
+    // Layer registry should never be instantiated - everything is done with its
+    // static variables.
+    LayerRegistry() {}
+
+    static string LayerTypeListString() 
+    {
+        vector<string> layer_types = LayerTypeList();
+        string layer_types_str;
+        
+        for (vector<string>::iterator iter = layer_types.begin();
+             iter != layer_types.end(); 
+             ++iter) 
+        {
+            if (iter != layer_types.begin()) 
+            {
+                layer_types_str += ", ";
+            }
+            
+            layer_types_str += *iter;
+        }
+         
+        return layer_types_str;
+    }
 };
 
 
@@ -134,15 +160,18 @@ static vector<string> LayerTypeList() {
 // 自己定义层的注册器  
 // 以供后面的宏进行使用  
 template <typename Dtype>  
-class LayerRegisterer {  
- public:  
-  // 层的注册器的构造函数  
-  LayerRegisterer(const string& type,  
-                  shared_ptr<Layer<Dtype> > (*creator)(const LayerParameter&)) {  
-    // LOG(INFO) << "Registering layer type: " << type;  
-    // 还是调用的层注册表中的加入Creator函数加入注册表  
-    LayerRegistry<Dtype>::AddCreator(type, creator);  
-  }  
+class LayerRegisterer 
+{  
+public:  
+    
+    // 层的注册器的构造函数  
+    LayerRegisterer(const string& type,  
+                  shared_ptr<Layer<Dtype> > (*creator)(const LayerParameter&)) 
+    {  
+        // LOG(INFO) << "Registering layer type: " << type;  
+        // 还是调用的层注册表中的加入Creator函数加入注册表  
+        LayerRegistry<Dtype>::AddCreator(type, creator);  
+    }  
 };  
 /*
 三、其他：

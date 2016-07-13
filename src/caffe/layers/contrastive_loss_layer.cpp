@@ -4,6 +4,53 @@
 #include "caffe/layers/contrastive_loss_layer.hpp"
 #include "caffe/util/math_functions.hpp"
 
+/*
+caffe的损失函数，目前已经囊括了所有可以用的了吧，损失函数由激活函数决定，同时有时会加入regularization,在BP过程中，使得误差传递得以良好运行。
+一、
+contrastive_loss，对应contrastive_loss_layer，这个应该是输入是一对用来做验证的数据，比如两张人脸图，可能是同一个人的（正样本），也可能是不同个人（负样本）。在caffe的examples中，siamese这个例子中，用的损失函数是该类型的。
+
+该损失函数具体数学表达形式：
+
+二、
+
+euclidean_loss，对应euclidean_loss_layer,该损失函数就是loss=(y-f(wx))^2
+
+hinge_loss，对应hinge_loss_layer，该损失函数就是loss=(0,)
+
+infogain_loss，对应infogain_loss_layer，损失函数表达式：
+
+multinomial_logistic_loss，对应multinomial_logistic_loss_layer，损失函数表达式：
+
+sigmoid_cross_entropy，对应sigmoid_cross_entropy_loss_layer,损失函数表达式：
+
+softmax_loss,对应softmax_loss_layer，损失函数表达式：
+
+三、
+对比损失函数（Contrastive loss）
+
+输入：
+
+形状：(N×C×1×1) 特征 a∈[-∞,+∞]
+
+形状：(N×C×1×1) 特征 b∈[-∞,+∞]
+
+形状：(N×1×1×1) 相似性 y∈[0,1]
+
+输出：
+
+形状：(1×1×1×1)
+
+对比损失函数为: E=12N∑n=1N(y)d+(1?y)max(margin?d,0)
+
+其中 d=||an?bn||22.
+
+适合场景：
+
+可以用来训练Siamese网络
+
+
+*/
+
 namespace caffe {
 
 template <typename Dtype>
@@ -43,6 +90,7 @@ void ContrastiveLossLayer<Dtype>::Forward_cpu(
       this->layer_param_.contrastive_loss_param().legacy_version();
   Dtype loss(0.0);
   for (int i = 0; i < bottom[0]->num(); ++i) {
+    // d点乘
     dist_sq_.mutable_cpu_data()[i] = caffe_cpu_dot(channels,
         diff_.cpu_data() + (i*channels), diff_.cpu_data() + (i*channels));
     if (static_cast<int>(bottom[2]->cpu_data()[i])) {  // similar pairs
@@ -118,3 +166,13 @@ INSTANTIATE_CLASS(ContrastiveLossLayer);
 REGISTER_LAYER_CLASS(ContrastiveLoss);
 
 }  // namespace caffe
+
+/*
+从程序中可以看到， 代码不是按照 上边的那个代价函数写的，  这可能是 caffe 一种优化方法， 这种代价函数可能效果更好。 
+
+从代码中可以看出 
+
+loss = d + max(margin - d)^2  或  + (margin - d^2) 
+
+
+*/
