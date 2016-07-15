@@ -7,7 +7,9 @@
 #include "caffe/layer.hpp"
 #include "caffe/proto/caffe.pb.h"
 /*
-前面的data layer和common layer都是中间计算层，虽然会涉及到反向传播，但传播的源头来自于loss_layer，即网络的最终端。这一层因为要计算误差，所以输入都是2个blob，输出1个blob。
+前面的data layer和common layer都是中间计算层，虽然会涉及到反向传播，但传播的源
+头来自于loss_layer，即网络的最终端。这一层因为要计算误差，所以输入都是2个blob，
+输出1个blob。
 */
 namespace caffe {
 

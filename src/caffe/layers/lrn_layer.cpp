@@ -3,6 +3,25 @@
 #include "caffe/layers/lrn_layer.hpp"
 #include "caffe/util/math_functions.hpp"
 
+/*
+Local Response Normalization (LRN): 局部响应归一化
+
+layer类型：LRN
+CPU实现：./src/caffe/layers/lrn_layer.cpp
+CUDA GPU实现：./src/caffe/layers/lrn_layer.cu
+参数(LRNParameter lrn_param)
+可选的
+local_size [default 5]: 指跨通道LRN求和的通道数目，或者通道内LRN求和的方形区域边长
+alpha [default 1]: 尺度参数
+beta [default 5]: 指数
+norm_region [default ACROSS_CHANNELS]: 在相邻通道上求和 (ACROSS_CHANNELS) 或者在通道内附近区域中求和 (WITHIN_CHANNEL)
+局部响应归一化层是一种侧抑制(lateral inhibition)，在局部输入区域上进行归一化。在ACROSS_CHANNELS模式下，局部区域扩展到相邻通道，但是没有空间扩展（也就是形状是local_size * 1 * 1）。在WITHIN_CHANNEL模式下，局部区域空间扩展，但是在各自的通道内（形状是1 * local_size * local_size）。每个输入值除以，n是每个局部区域的尺寸，求和是在以当前位置为中心的区域上操作。
+
+ 
+
+ im2col：它是一个做图像到列向量变换的工具，我们不需要了解。它在caffe原始的卷积中使用，通过把所有patches放入一个矩阵进行矩阵乘法。
+*/
+
 namespace caffe {
 
 template <typename Dtype>

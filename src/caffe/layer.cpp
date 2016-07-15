@@ -516,6 +516,13 @@ LayerµÄÉè¼ÆÖ÷Òª¾ÍÊÇSetUp¡¢Forward¡¢Backwardº¯Êı£¨²ãÒ»¿ªÊ¼µÄÊ±ºòµÄÉèÖÃ¡¢È»ºó¾ÍÊÇÇ
 ¦Äl=((wl+1)T¦Äl+1)¦Ò¡ä(zl)
 ÏëÑ§ºÃcaffe½¨Òé¿´Ô´Âë£¬layer.hpp:
 
+
+
+layerÊÇ½¨Ä£ºÍ¼ÆËãµÄ»ù±¾µ¥Ôª¡£
+
+caffeµÄÄ¿Â¼°üº¬¸÷ÖÖstate-of-the-art modelµÄlayers¡£
+
+ÎªÁË´´½¨Ò»¸öcaffe model£¬ÎÒÃÇĞèÒª¶¨ÒåÄ£ĞÍ¼Ü¹¹ÔÚÒ»¸öprotocol buffer¶¨ÒåÎÄ¼şÖĞ(prototxt)¡£caffeµÄlayerºÍËüÃÇµÄ²ÎÊı±»¶¨ÒåÔÚcaffe.protoÖĞ¡£
 */
 
 namespace caffe {

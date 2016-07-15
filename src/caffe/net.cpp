@@ -129,52 +129,71 @@ Net<Dtype>::Net(const string& param_file, Phase phase, const Net* root_net)
 <8> 建立每个blob的name和index的对应关系map：blob_names_index_
 <9> 建立每个层的name和index的对应关系map：layer_names_index_
 <10> 调用GetLearningRateAndWeightDecay函数
+
+
+模型初始化使用Net::Init().这个初始化主要做两件事：创建blobs和layers搭建整个有向
+无环图（DAG），调用layers的Setup()函数。它也做一些统计工作，例如校验整个网络架
+构的正确性。
+
+注意：网络的构建是设备无关的。构建之后，网络是运行在CPU或GPU上是通过一个单独的
+定义实现的Caffe::mode()，设置Caffe::set_mode()。
+
+模型是在纯文本protocol buffer模式.prototxt中定义的，学习好的模型被序列化为binary
+protocol buffer，存储在 .caffemodel文件中。
+
+caffe使用Google Protocol Buffer出于以下几个优点：
+
+序列化时最小化binary string的size，有效序列化，文本格式兼容binary version，在多
+种语言中都有接口实现，例如C++和Python。这些优点使得在caffe建模灵活可拓展。
 */
 template <typename Dtype>
 void Net<Dtype>::Init(const NetParameter& in_param) 
 {
-  CHECK(Caffe::root_solver() || root_net_)
+    CHECK(Caffe::root_solver() || root_net_)
       << "root_net_ needs to be set for all non-root solvers";
-  // Set phase from the state.
-  phase_ = in_param.state().phase();
-  // Filter layers based on their include/exclude rules and
-  // the current NetState.
-  NetParameter filtered_param;
-  FilterNet(in_param, &filtered_param);
-  LOG_IF(INFO, Caffe::root_solver())
+    
+    // Set phase from the state.
+    phase_ = in_param.state().phase();
+    
+    // Filter layers based on their include/exclude rules and
+    // the current NetState.
+    NetParameter filtered_param;
+    FilterNet(in_param, &filtered_param);
+    LOG_IF(INFO, Caffe::root_solver())
       << "Initializing net from parameters: " << std::endl
       << filtered_param.DebugString();
-  // Create a copy of filtered_param with splits added where necessary.
-  NetParameter param;
+    
+    // Create a copy of filtered_param with splits added where necessary.
+    NetParameter param;
 
-  // <1> 调用InsertSplits()函数从in_param读入新网络到param 
-  InsertSplits(filtered_param, &param);
+    // <1> 调用InsertSplits()函数从in_param读入新网络到param 
+    InsertSplits(filtered_param, &param);
 
-  // <2> 定义name_，blob_name_to_idx，available_blobs，num_layers 
-  // Basically, build all the layers and set up their connections.
-  name_ = param.name();
+    // <2> 定义name_，blob_name_to_idx，available_blobs，num_layers 
+    // Basically, build all the layers and set up their connections.
+    name_ = param.name();
 
-  // 7. map<string, int> blob_name_to_idx
-  // blob_name_to_idx是一个map,其关键字是不重复的  
-  map<string, int> blob_name_to_idx;
+    // 7. map<string, int> blob_name_to_idx
+    // blob_name_to_idx是一个map,其关键字是不重复的  
+    map<string, int> blob_name_to_idx;
 
-  // 8. 初始化为输入层的每个blob的名字 set<string> available_blobs
-  //available_blobs是一个set,其关键字是不重复的  
-  set<string> available_blobs;
-  memory_used_ = 0;
+    // 8. 初始化为输入层的每个blob的名字 set<string> available_blobs
+    //available_blobs是一个set,其关键字是不重复的  
+    set<string> available_blobs;
+    memory_used_ = 0;
 
-  // <3> param.input_size()返回输入层blob的个数; 
-  // param.input(i)表示第i个blob的名字; 
-  // param.layers_size()返回网络的层数。 
-  // For each layer, set up its input and output
-  bottom_vecs_.resize(param.layer_size());
-  top_vecs_.resize(param.layer_size());
-  bottom_id_vecs_.resize(param.layer_size());
-  param_id_vecs_.resize(param.layer_size());
-  top_id_vecs_.resize(param.layer_size());
-  bottom_need_backward_.resize(param.layer_size());
+    // <3> param.input_size()返回输入层blob的个数; 
+    // param.input(i)表示第i个blob的名字; 
+    // param.layers_size()返回网络的层数。 
+    // For each layer, set up its input and output
+    bottom_vecs_.resize(param.layer_size());
+    top_vecs_.resize(param.layer_size());
+    bottom_id_vecs_.resize(param.layer_size());
+    param_id_vecs_.resize(param.layer_size());
+    top_id_vecs_.resize(param.layer_size());
+    bottom_need_backward_.resize(param.layer_size());
 
-  // 用网络的层数param.layers_size()去初始化上面四个变量 
+    // 用网络的层数param.layers_size()去初始化上面四个变量 
 
     // <4> 对每一个输入层的blob：
     // <6> 对第i层（很大的一个for循环）：
@@ -228,15 +247,20 @@ void Net<Dtype>::Init(const NetParameter& in_param)
         << "Creating Layer " << layer_param.name();
         bool need_backward = false;
 
+        // 计算本层的输入和输出
         // Figure out this layer's input and output
-        for (int bottom_id = 0; bottom_id < layer_param.bottom_size();
-         ++bottom_id) 
+        for (int bottom_id = 0; 
+             bottom_id < layer_param.bottom_size();
+             ++bottom_id) 
         {
             const int blob_id = AppendBottom(param, layer_id, bottom_id,
                                            &available_blobs, &blob_name_to_idx);
 
             // 4. 判断当前层是否需要反馈
-            //在遍历所有的bottom_id的过程中，只要有一次使得need_backward为真，则这个for循环结束后，need_backward也为真。也就是说该层前一层的top blob中只要有一个blob在blob_need_backward_中为true，则backward就为true，后面的layer_need_backward_也就push_back(true)  
+            // 在遍历所有的bottom_id的过程中，只要有一次使得need_backward为真，
+            // 则这个for循环结束后，need_backward也为真。也就是说该层前一层的
+            // top blob中只要有一个blob在blob_need_backward_中为true，则
+            // backward就为true，后面的layer_need_backward_也就push_back(true)  
             // If a blob needs backward, this layer should provide it.
             need_backward |= blob_need_backward_[blob_id];
         }
@@ -272,17 +296,19 @@ void Net<Dtype>::Init(const NetParameter& in_param)
         // specified fewer than the required number (as specified by
         // ExactNumTopBlobs() or MinTopBlobs()), allocate them here.
         Layer<Dtype>* layer = layers_[layer_id].get();
-        if (layer->AutoTopBlobs()) {
-        const int needed_num_top =
-          std::max(layer->MinTopBlobs(), layer->ExactNumTopBlobs());
         
-        for (; num_top < needed_num_top; ++num_top) 
+        if (layer->AutoTopBlobs()) 
         {
-            // Add "anonymous" top blobs -- do not modify available_blobs or
-            // blob_name_to_idx as we don't want these blobs to be usable as input
-            // to other layers.
-            AppendTop(param, layer_id, num_top, NULL, NULL);
-        }
+            const int needed_num_top =
+              std::max(layer->MinTopBlobs(), layer->ExactNumTopBlobs());
+            
+            for (; num_top < needed_num_top; ++num_top) 
+            {
+                // Add "anonymous" top blobs -- do not modify available_blobs or
+                // blob_name_to_idx as we don't want these blobs to be usable as input
+                // to other layers.
+                AppendTop(param, layer_id, num_top, NULL, NULL);
+            }
         }
         
         // After this layer is connected, set it up.
@@ -291,42 +317,52 @@ void Net<Dtype>::Init(const NetParameter& in_param)
             // Set up size of top blobs using root_net_
             const vector<Blob<Dtype>*>& base_top = root_net_->top_vecs_[layer_id];
             const vector<Blob<Dtype>*>& this_top = this->top_vecs_[layer_id];
-            for (int top_id = 0; top_id < base_top.size(); ++top_id) {
-            this_top[top_id]->ReshapeLike(*base_top[top_id]);
-            LOG(INFO) << "Created top blob " << top_id << " (shape: "
-                << this_top[top_id]->shape_string() <<  ") for shared layer "
-                << layer_param.name();
-        }
+
+            for (int top_id = 0; top_id < base_top.size(); ++top_id) 
+            {
+                this_top[top_id]->ReshapeLike(*base_top[top_id]);
+                LOG(INFO) << "Created top blob " << top_id << " (shape: "
+                    << this_top[top_id]->shape_string() <<  ") for shared layer "
+                    << layer_param.name();
+            }
         } 
         else 
         {
             // 注意这里的Setup!见底下关于layer.hpp的分析。
-            // 调用模板类layer的SetUp方法，如果在网络的定义文件里没有设置loss_weight，那么loss layer的LayerSetup函数里会设置loww_weght, 且默认值  
+            // 调用模板类layer的SetUp方法，如果在网络的定义文件里没有设置
+            // loss_weight，那么loss layer的LayerSetup函数里会设置loww_weght, 且默认值  
             layers_[layer_id]->SetUp(bottom_vecs_[layer_id], top_vecs_[layer_id]);
         }
+        
         LOG_IF(INFO, Caffe::root_solver())
         << "Setting up " << layer_names_[layer_id];
 
         // 每次循环，都会更新向量blob_loss_weights  
         for (int top_id = 0; top_id < top_vecs_[layer_id].size(); ++top_id) 
         {
-            if (blob_loss_weights_.size() <= top_id_vecs_[layer_id][top_id]) {
-            blob_loss_weights_.resize(top_id_vecs_[layer_id][top_id] + 1, Dtype(0));
+            if (blob_loss_weights_.size() <= top_id_vecs_[layer_id][top_id]) 
+            {
+                blob_loss_weights_.resize(top_id_vecs_[layer_id][top_id] + 1, Dtype(0));
             }
 
-            // top_id_vecs_中存储的最基本元素是blob_id ——> 每一个新的blob都会赋予其一个blob_id，但是这个blob_id可能是会有重复的  
-            // loss函数返回loss_weight ——> 在模板类的SetUp方法中会调用SetLossWeights来设置其私有数据成员loss_,里面存储的其实是loss_weight  
+            // top_id_vecs_中存储的最基本元素是blob_id ——> 每一个新的blob都会
+            // 赋予其一个blob_id，但是这个blob_id可能是会有重复的  
+            // loss函数返回loss_weight ——> 在模板类的SetUp方法中会调用
+            // SetLossWeights来设置其私有数据成员loss_,里面存储的其实是loss_weight  
             blob_loss_weights_[top_id_vecs_[layer_id][top_id]] = layer->loss(top_id);
             LOG_IF(INFO, Caffe::root_solver())
               << "Top shape: " << top_vecs_[layer_id][top_id]->shape_string();
-            if (layer->loss(top_id)) {
-            LOG_IF(INFO, Caffe::root_solver())
-                << "    with loss weight " << layer->loss(top_id);
-        }
+            
+            if (layer->loss(top_id)) 
+            {
+                LOG_IF(INFO, Caffe::root_solver())
+                    << "    with loss weight " << layer->loss(top_id);
+            }
 
-        // 9. 计算所需内存 memory_used += blob_pointer->count()
-        memory_used_ += top_vecs_[layer_id][top_id]->count();
+            // 9. 计算所需内存 memory_used += blob_pointer->count()
+            memory_used_ += top_vecs_[layer_id][top_id]->count();
         }
+        
         LOG_IF(INFO, Caffe::root_solver())
         << "Memory required for data: " << memory_used_ * sizeof(Dtype);
         const int param_size = layer_param.param_size();
@@ -337,24 +373,30 @@ void Net<Dtype>::Init(const NetParameter& in_param)
         << "Too many params specified for layer " << layer_param.name();
         ParamSpec default_param_spec;
         
-        for (int param_id = 0; param_id < num_param_blobs; ++param_id) {
-        const ParamSpec* param_spec = (param_id < param_size) ?
-          &layer_param.param(param_id) : &default_param_spec;
-        const bool param_need_backward = param_spec->lr_mult() != 0; //need backward 则为真。  
+        for (int param_id = 0; param_id < num_param_blobs; ++param_id) 
+        {
+            const ParamSpec* param_spec = (param_id < param_size) ?
+              &layer_param.param(param_id) : &default_param_spec;
+            const bool param_need_backward = param_spec->lr_mult() != 0; // need backward 则为真。  
 
-        // 由 param_need_backward 来决定need_backward是否为真(网络定义文件中的lr_mult很重要)，并且，只要有一次遍历使得need_backward为真，则这个for循环结束后，need_backward也为真  
-        need_backward |= param_need_backward;
+            // 由 param_need_backward 来决定need_backward是否为真(网络定义文件
+            // 中的lr_mult很重要)，并且，只要有一次遍历使得need_backward为真，
+            // 则这个for循环结束后，need_backward也为真  
+            need_backward |= param_need_backward;
 
-        // 设定一个Layer的parameter blob 是否需要计算diff backward--->set_param_propagate_down是模板类Layer的方法。  
-        layers_[layer_id]->set_param_propagate_down(param_id,
-                                                  param_need_backward);
+            // 设定一个Layer的parameter blob 是否需要计算diff backward->set_param_propagate_down
+            // 是模板类Layer的方法。  
+            layers_[layer_id]->set_param_propagate_down(param_id,
+                                                      param_need_backward);
         }
         
         for (int param_id = 0; param_id < num_param_blobs; ++param_id) 
         {
          
-            // 添加parameter blob,如果当前layer没有parameter blob(num_param_blobs==0),比如RELU，那么就不进入循环，不添加parameter blob  
-            // AppendParam只是执行为当前layer添加parameter blob的相关工作，并不会修改与backward的相关属性  
+            // 添加parameter blob,如果当前layer没有parameter blob(num_param_blobs==0),
+            // 比如RELU，那么就不进入循环，不添加parameter blob  
+            // AppendParam只是执行为当前layer添加parameter blob的相关工作，并不
+            // 会修改与backward的相关属性  
             AppendParam(param, layer_id, param_id);
         }
 

@@ -103,7 +103,7 @@ public:
         CHECK_EQ(registry.count(type), 1) << "Unknown layer type: " << type  
         << " (known types: " << LayerTypeListString() << ")";  
 
-        //这里大概就直接new了一个新的layer类。DataLayer,ConvolutionLayer,...
+        // 这里大概就直接new了一个新的layer类。DataLayer,ConvolutionLayer,...
         // 调用对应的层的Creator函数  
         return registry[type](param);  
     }  
@@ -173,6 +173,7 @@ public:
         LayerRegistry<Dtype>::AddCreator(type, creator);  
     }  
 };  
+
 /*
 三、其他：
 为了方便作者还弄了个宏便于注册自己写的层类
@@ -209,13 +210,15 @@ public:
     return shared_ptr<Layer<Dtype> >(new type##Layer<Dtype>(param));           \
   }                                                                            \
   REGISTER_LAYER_CREATOR(type, Creator_##type##Layer)
-  //注意这里的REGISTER_LAYER_CLASS,REGISTER_LAYER_CREATOR
-  //新定义了对象LayerRegisterer
-  //->AddCreator->registry[type] = creator
-  //这样的话,在CreateLayer函数里就有返回值了.return registry[type](param);
-  //如:在data_layer.cpp最后可以找到REGISTER_LAYER_CLASS(Data);
-  //REGISTER_LAYER_CLASS(Data)是在namespace caffe里的,又是static的.
-  //所以当程序第一次使用namespace caffe时,就会调用REGISTER_LAYER_CLASS(Data).以及所有其他的static的函数/对象(?)
+  
+  // 注意这里的REGISTER_LAYER_CLASS,REGISTER_LAYER_CREATOR
+  // 新定义了对象LayerRegisterer
+  // ->AddCreator->registry[type] = creator
+  // 这样的话,在CreateLayer函数里就有返回值了.return registry[type](param);
+  // 如:在data_layer.cpp最后可以找到REGISTER_LAYER_CLASS(Data);
+  // REGISTER_LAYER_CLASS(Data)是在namespace caffe里的,又是static的.
+  // 所以当程序第一次使用namespace caffe时,就会调用REGISTER_LAYER_CLASS(Data).
+  // 以及所有其他的static的函数/对象(?)
 
 }  // namespace caffe
 

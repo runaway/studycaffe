@@ -4,6 +4,171 @@
 #include "caffe/layers/inner_product_layer.hpp"
 #include "caffe/util/math_functions.hpp"
 
+/*
+Common Layers：一般层
+ 
+
+Inner Product
+layer类型：InnerProduct
+CPU实现：./src/caffe/layers/inner_product_layer.cpp
+CUDA GPU实现：./src/caffe/layers/inner_product_layer.cu
+参数(InnerProductParameter inner_product_param)
+必需的
+num_output (c_o): 滤波器数目
+强烈推荐的
+weight_filler [default type: 'constant' value: 0]
+可选的
+bias_filler [default type: 'constant' value: 0]
+bias_term [default true]: 指定是否对滤波器输出学习和应用一组附加偏差项
+输入：n * c_i * h_i * w_i
+输出：n * c_o * 1 * 1
+例子
+复制代码
+layer {
+  name: "fc8"
+  type: "InnerProduct"
+  # learning rate and decay multipliers for the weights
+  param { lr_mult: 1 decay_mult: 1 }
+  # learning rate and decay multipliers for the biases
+  param { lr_mult: 2 decay_mult: 0 }
+  inner_product_param {
+    num_output: 1000
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+  bottom: "fc7"
+  top: "fc8"
+}
+复制代码
+内积层（实际上通常指全连接层）将输入看成简单向量，产生一个单个向量形式的输出（blob的高和宽设置为1）。
+
+ 
+
+Splitting：分割
+分割层是一个功能层，将输入blob分成多个输出blob。这个layer用于一个blob被输入到多个输出层的情况。
+
+ 
+
+Flattening：压扁
+flatten layer也是一个功能层，将形为n * c * h * w的blob输入压扁成一个形为n * (c * h * w)的简单向量，实际上是单独压缩，每个数据是一个简单向量，维度c * h * w，共n个向量。
+
+ 
+
+Reshape：整形
+layer类型：Reshape
+CPU实现：./src/caffe/layers/reshape_layer.cpp
+参数(ReshapeParameter reshape_param)
+可选的
+shape
+输入：一个任意维度的blob
+输出：同一个blob，维度修改为reshape_param
+例子：
+复制代码
+  layer {
+    name: "reshape"
+    type: "Reshape"
+    bottom: "input"
+    top: "output"
+    reshape_param {
+      shape {
+        dim: 0  # copy the dimension from below
+        dim: 2
+        dim: 3
+        dim: -1 # infer it from the other dimensions
+      }
+    }
+  }
+复制代码
+reshape layer用于改变输入维度，但是不改变数据。就像flatten layer一样，仅仅数据维度改变，过程中没有数据被拷贝。
+
+输出维度被Reshape_param指定。帧数直接使用，设置相应的输出blob的维度。在目标维度值设置时，两个特殊值被接受：
+0： 从bottom layer拷贝相应维度。如果给定dim: 0，且bottom由2作为第一维维度，那么top layer也由2作为第一维维度 ==> 不改变原始维度
+-1：代表从其他维度推断这一维维度。这个行为与numpy的-1和Matlab reshape时的[ ]作用是相似的。维度被计算，使得总体输出维度与bottom layer相似。在reshape操作中至多可以设置一个-1。
+另外一个例子，指定reshape_param{shape{dim: 0 dim:-1}}作用与Flatten layer作用相同，都是将输入blob压扁成向量。
+
+ 
+
+Concatenation：拼接
+
+concat layer是一个功能层，用于将多个输入blob拼接城一个单个的输出blob。
+
+layer类型：Concat
+CPU实现：./src/caffe/layers/concat_layer.cpp
+CUDA GPU实现：./src/caffe/layers/concat_layer.cu
+参数(ConcatParameter concat_param)
+可选的
+axis [default 1]: 0表示沿着num连接，1表示按通道连接。
+输入：n_i * c_i * h * w，K个输入blob
+输出：
+如果axis = 0: (n_1 + n_2 + ... + n_K) * c_1 * h * w，所有输入的c_i应该相同；
+如果axis = 1: n_1 * (c_1 + c_2 + ... + c_K) * h * w，所有输入的n_i应该相同。
+例子：
+复制代码
+layer {
+  name: "concat"
+  bottom: "in1"
+  bottom: "in2"
+  top: "out"
+  type: "Concat"
+  concat_param {
+    axis: 1
+  }
+}
+复制代码
+ 
+
+Slicing：切片
+slice layer也是一个功能层，将一个输入层沿着给定维度（当前仅提供基于num和通道的实现）切片成多个输出层。
+
+例子：
+
+复制代码
+layer {
+  name: "slicer_label"
+  type: "Slice"
+  bottom: "label"
+  ## Example of label with a shape N x 3 x 1 x 1
+  top: "label1"
+  top: "label2"
+  top: "label3"
+  slice_param {
+    axis: 1
+    slice_point: 1
+    slice_point: 2
+  }
+}
+复制代码
+axis表示目标axis，沿着给定维度切片。slice_point表示选择维度的索引，索引数目应该等于顶层blob数目减一。
+
+ 
+
+Elementwise Operations
+Eltwise
+
+ 
+
+Argmax
+ArgMax
+
+ 
+
+Softmax
+Softmax
+
+ 
+
+Mean-Variance Normalization
+MVN
+
+*/
+
+
 namespace caffe {
 
 template <typename Dtype>

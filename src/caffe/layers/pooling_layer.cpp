@@ -5,6 +5,49 @@
 #include "caffe/layers/pooling_layer.hpp"
 #include "caffe/util/math_functions.hpp"
 
+/*
+Pooling layers：
+
+layer类型：Pooling
+CPU实现：./src/caffe/layers/pooling_layer.cpp
+CUDA GPU实现：./src/caffe/layers/pooling_layer.cu
+参数(PoolingParameter pooling_param)
+必须要求的
+kernel_size (or kernel_h and kernel_w): 每个滤波器的高和宽
+强烈推荐的
+weight_filter [default type: 'constant' value: 0]
+可选的
+pool [default MAX]: pooling的方法，包括MAX, AVE, or STOCHASTIC
+pad (or pad_h and pad_w) [default 0]: 指定在输入图像的每个边隐含添加的像素数目
+stride (or stride_h and stride_w) [default 1]: 指定应用滤波器到图像时滤波器的间隔
+输入： n * c * h_i * w_i
+输出：n * c * h_o * w_o，其中h_o = (h_i + 2 * pad_h - kernel_h) / stride_h + 1，w_o可得类似结果。
+例子：
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+layer {
+  name: "pool1"
+  type: "Pooling"
+  bottom: "conv1"
+  top: "pool1"
+  pooling_param {
+    pool: MAX
+    kernel_size: 3 # pool over a 3x3 region
+    stride: 2      # step two pixels (in the bottom blob) between pooling regions
+  }
+}
+
+*/
+
 namespace caffe {
 
 using std::min;
