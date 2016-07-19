@@ -50,17 +50,19 @@ namespace caffe {
 template <typename Dtype>
 class Solver;
 
+// SolverRegistry 类不能实例化，所有的方法直接调用
 template <typename Dtype>
 class SolverRegistry {
  public:
+    //Creator为函数指针类型；CreatorRegistry为标准map容器，储存函数指针；
   typedef Solver<Dtype>* (*Creator)(const SolverParameter&);
   typedef std::map<string, Creator> CreatorRegistry;
-
+  //创建CreatorRegistry类型容器函数，返回其引用；
   static CreatorRegistry& Registry() {
     static CreatorRegistry* g_registry_ = new CreatorRegistry();
     return *g_registry_;
   }
-
+// 向CreatorRegistry容器中增加Creator；
   // Adds a creator.
   static void AddCreator(const string& type, Creator creator) {
     CreatorRegistry& registry = Registry();
@@ -68,7 +70,7 @@ class SolverRegistry {
         << "Solver type " << type << " already registered.";
     registry[type] = creator;
   }
-
+  // 通过SolverParameter返回Solver指针；
   // Get a solver using a SolverParameter.
   static Solver<Dtype>* CreateSolver(const SolverParameter& param) {
     const string& type = param.type();
@@ -77,7 +79,7 @@ class SolverRegistry {
         << " (known types: " << SolverTypeListString() << ")";
     return registry[type](param);
   }
-
+  //获取CreatorRegistry容器中注册过的solver类型名，string列表储存；
   static vector<string> SolverTypeList() {
     CreatorRegistry& registry = Registry();
     vector<string> solver_types;
@@ -92,7 +94,7 @@ class SolverRegistry {
   // Solver registry should never be instantiated - everything is done with its
   // static variables.
   SolverRegistry() {}
-
+//这个函数从solver_types列表中取出一个个string；
   static string SolverTypeListString() {
     vector<string> solver_types = SolverTypeList();
     string solver_types_str;
@@ -111,6 +113,7 @@ class SolverRegistry {
 template <typename Dtype>
 class SolverRegisterer {
  public:
+    //对SolverRegistry接口进行封装，功能是注册creator；
   SolverRegisterer(const string& type,
       Solver<Dtype>* (*creator)(const SolverParameter&)) {
     // LOG(INFO) << "Registering solver type: " << type;
@@ -118,11 +121,11 @@ class SolverRegisterer {
   }
 };
 
-
+//注册方法一：注册一个solver creator
 #define REGISTER_SOLVER_CREATOR(type, creator)                                 \
   static SolverRegisterer<float> g_creator_f_##type(#type, creator<float>);    \
   static SolverRegisterer<double> g_creator_d_##type(#type, creator<double>)   \
-
+ //注册方法二：
 #define REGISTER_SOLVER_CLASS(type)                                            \
   template <typename Dtype>                                                    \
   Solver<Dtype>* Creator_##type##Solver(                                       \
@@ -133,5 +136,7 @@ class SolverRegisterer {
   REGISTER_SOLVER_CREATOR(type, Creator_##type##Solver)
 
 }  // namespace caffe
+
+// 总结：通过两种方法之一注册一个solver creator，注册过后通过CreateSolver调用。
 
 #endif  // CAFFE_SOLVER_FACTORY_H_

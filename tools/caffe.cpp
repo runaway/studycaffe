@@ -48,39 +48,44 @@ DEFINE_string(sighup_effect, "snapshot",
              "Optional; action to take when a SIGHUP signal is received: "
              "snapshot, stop or none.");
 /*
-（3）g_brew_map实现过程，首先通过 typedef定义函数指针
+（3）g_brew_map实现过程，首先通过typedef定义函数指针
 typedef int (*BrewFunction)();
 这个是用typedef定义函数指针方法。这个程序定义一个BrewFunction函数指针类型，
-在caffe.cpp 中 BrewFunction 作为GetBrewFunction()函数的返回类型，可以是 train()，test()，device_query()，time() 这四个函数指针的其中一个。在train()，test()，中可以调用solver类的函数，从而进入到net，进入到每一层，运行整个caffe程序。
-*/
-// A simple registry for caffe commands.
-typedef int (*BrewFunction)();
+在caffe.cpp 中 BrewFunction 作为GetBrewFunction()函数的返回类型，可以是train()，
+test()，device_query()，time() 这四个函数指针的其中一个。在train()，test()，中
+可以调用solver类的函数，从而进入到net，进入到每一层，运行整个caffe程序。
 
-/*
-（4）g_brew_map定义
-typedef std::map<caffe::string, BrewFunction> BrewMap;// 因为输入参数可能为train，test，device_query，time，所以定义一个容器类型，
-*/
-typedef std::map<caffe::string, BrewFunction> BrewMap;
+在main函数中出现了GetBrewFunction函数，即在标准指令下，main函数将执行GetBrewFunction函数。首先看看caffe.cpp中一些重要代码：
+// 这里定义函数指针类型BrewFunction
+typedef int (*BrewFunction)();
+// c++标准map容器，caffe执行的action name与对应函数的映射，容器类型名为BrewMap
+typedef std::map BrewMap;
+// 声明map容器变量g_brew_map
 BrewMap g_brew_map;
 
-// （5） g_brew_map 初始化
-// 这个作用和#define RegisterBrewFunction(func) g_brew_map[#func]=&func;  这个宏定义功能类似，其中，func可以为：train，test，device_query，time。
+// 宏定义，比如RegisterBrewFunction（train）时，相当于在容器g_brew_map中注册了train函数的函数指针和其对应的名字“train”，对于#和##的用法见下文。
 #define RegisterBrewFunction(func) \
 namespace { \
 class __Registerer_##func { \
- public: /* NOLINT */ \
+ public: \
   __Registerer_##func() { \
     g_brew_map[#func] = &func; \
   } \
 }; \
 __Registerer_##func g_registerer_##func; \
 }
+C++中#和##用法:在C/C++的宏中，”#”的功能是将其后面的宏参数进行字符串化操作(Stringfication)，简单说就是在对它所引用的宏变量通过替换后在其左右各加上一个双引号。”##”被称为连接符(concatenator)，用来将两个子串Token连接为一个Token。注意这里连接的对象是Token就行，而不一定是宏的变量。
+凡是宏定义里有用’#’或’##’的地方宏参数是不会再展开。若要使’#’和’##’的宏参数被展开，可以加多一层中间转换宏。
 
-// （2）GetBrewFunction（）函数定义如下，其返回BrewFunction函数指针。
+在caffe.cpp中定义了一些BrewFunction类的函数，通过RegisterBrewFunction（function）注册进容器g_brew_map：
+int device_query() ：用来查询GPU信息
+int train()：训练神经网络
+int test() ：测试神经网络
+int time()：测试model执行时间
+
+GetBrewFunction函数通过caffe命令后第一个参数在g_brew_map容器中查找对应函数指针并返回。代码如下：
 static BrewFunction GetBrewFunction(const caffe::string& name) {
-// 判断输入的是不是g_brew_map中train，test，device_query，time中一个，
   if (g_brew_map.count(name)) {
-    // 如果是的话，就调用相应的train(),test()，device_query()，time()
     return g_brew_map[name];
   } else {
     LOG(ERROR) << "Available caffe actions:";
@@ -92,8 +97,58 @@ static BrewFunction GetBrewFunction(const caffe::string& name) {
     return NULL;  // not reachable, just to suppress old compiler warnings.
   }
 }
+*/
+// A simple registry for caffe commands.
+typedef int (*BrewFunction)();
 
-// caffe中定义了train()，test()，device_query()，time()四种方式。  如果需要，咱们可以增加其他的方式，然后通过RegisterBrewFunction() 函数注册一下即可。    
+/*
+（4）g_brew_map定义
+typedef std::map<caffe::string, BrewFunction> BrewMap;
+因为输入参数可能为train,test，device_query，time，所以定义一个容器类型，
+*/
+typedef std::map<caffe::string, BrewFunction> BrewMap;
+BrewMap g_brew_map;
+
+// （5） g_brew_map 初始化
+// 这个作用和#define RegisterBrewFunction(func) g_brew_map[#func]=&func;
+// 这个宏定义功能类似，其中，func可以为：train，test，device_query，time。
+#define RegisterBrewFunction(func) \
+namespace { \
+class __Registerer_##func { \
+ public: /* NOLINT */ \
+  __Registerer_##func() { \
+    g_brew_map[#func] = &func; \
+  } \
+}; \
+__Registerer_##func g_registerer_##func; \
+}
+
+// （2）GetBrewFunction()函数定义如下,其返回BrewFunction函数指针。
+static BrewFunction GetBrewFunction(const caffe::string& name) 
+{
+    // 判断输入的是不是g_brew_map中train，test，device_query，time中一个，
+    if (g_brew_map.count(name)) 
+    {
+        // 如果是的话，就调用相应的train(),test()，device_query()，time()
+        return g_brew_map[name];
+    } 
+    else 
+    {
+        LOG(ERROR) << "Available caffe actions:";
+        
+        for (BrewMap::iterator it = g_brew_map.begin();
+             it != g_brew_map.end(); ++it) 
+        {
+          LOG(ERROR) << "\t" << it->first;
+        }
+             
+        LOG(FATAL) << "Unknown action: " << name;
+        return NULL;  // not reachable, just to suppress old compiler warnings.
+    }
+}
+
+// caffe中定义了train()，test()，device_query()，time()四种方式.如果需要，咱们
+// 可以增加其他的方式，然后通过RegisterBrewFunction() 函数注册一下即可。    
 
 // Parse GPU ids or use all available devices
 static void get_gpus(vector<int>* gpus) {
@@ -139,16 +194,21 @@ RegisterBrewFunction(device_query);
 
 // Load the weights from the specified caffemodel(s) into the train and
 // test nets.
-void CopyLayers(caffe::Solver<float>* solver, const std::string& model_list) {
-  std::vector<std::string> model_names;
-  boost::split(model_names, model_list, boost::is_any_of(",") );
-  for (int i = 0; i < model_names.size(); ++i) {
-    LOG(INFO) << "Finetuning from " << model_names[i];
-    solver->net()->CopyTrainedLayersFrom(model_names[i]);
-    for (int j = 0; j < solver->test_nets().size(); ++j) {
-      solver->test_nets()[j]->CopyTrainedLayersFrom(model_names[i]);
+void CopyLayers(caffe::Solver<float>* solver, const std::string& model_list) 
+{
+    std::vector<std::string> model_names;
+    boost::split(model_names, model_list, boost::is_any_of(",") );
+
+    for (int i = 0; i < model_names.size(); ++i) 
+    {
+        LOG(INFO) << "Finetuning from " << model_names[i];
+        solver->net()->CopyTrainedLayersFrom(model_names[i]);
+
+        for (int j = 0; j < solver->test_nets().size(); ++j) 
+        {
+            solver->test_nets()[j]->CopyTrainedLayersFrom(model_names[i]);
+        }
     }
-  }
 }
 
 // Translate the signal effect the user specified on the command-line to the
@@ -170,14 +230,24 @@ caffe::SolverAction::Enum GetRequestedAction(
 // Train / Finetune a model.
 int train() 
 {
+    // 检查输入参数solver,snapshot和weight。其中solver为solver的ptototxt文件  
+    // snapshot为训练时产生的快照，以便在训练中断后，不至于从头开始训练  
+    // weights为一个已有的训练好的网络，如果指定了weights，则训练的时候会用指定  
+    // 的weights初始化网络参数，然后再训练，主要用于对网络进行finetune  
+    // 注意:snapshot和weights不能同时使用  
     CHECK_GT(FLAGS_solver.size(), 0) << "Need a solver definition to train.";
     CHECK(!FLAGS_snapshot.size() || !FLAGS_weights.size())
     << "Give a snapshot to resume training or weights to finetune "
     "but not both.";
 
+    // 从指定的solver的prototxt文件中读取SolverParameter 
+    // 实例化SolverParameter类，该类保存solver参数和相应的方法（SoverParameter是由google protobuffer编译过来的类，具体声明可以见代码文件build/src/caffe/proto/caffe.pb.h）；
     caffe::SolverParameter solver_param;
+
+    // 将-solver指定solver.prototxt文件内容解析到solver_param中，该函数声明在include/caffe/util/upgrade_proto.hpp中，实现在src/caffe/util/upgrade_proto.cpp中；
     caffe::ReadSolverParamsFromTextFileOrDie(FLAGS_solver, &solver_param);
 
+    // 根据命令参数-gpu或者solver.prototxt提供的信息设置GPU；
     // If the gpus flag is not provided, allow the mode and device to be set
     // in the solver prototxt.
     if (FLAGS_gpu.size() == 0
@@ -189,11 +259,14 @@ int train()
                 boost::lexical_cast<string>(solver_param.device_id());
         } 
         else 
-        {  // Set default GPU if unspecified
+        {
+            // boost::lexical_cast(0)是将数值0转换为字符串'“0”；
+            // Set default GPU if unspecified
             FLAGS_gpu = "" + boost::lexical_cast<string>(0);
         }
     }
 
+    // 多GPU下，将GPU编号存入vector容器中（get_gpus()函数通过FLAGS_gpu获取）；
     vector<int> gpus;
     get_gpus(&gpus);
     
@@ -229,9 +302,11 @@ int train()
         Caffe::set_solver_count(gpus.size());
     }
 
+    // 处理snapshot, stop or none信号，其声明在include/caffe/util/signal_Handler.h中；
+    // GetRequestedAction在caffe.cpp中，将‘stop’，‘snapshot’，‘none’转换为标准信号，即解析；
     caffe::SignalHandler signal_handler(
-    GetRequestedAction(FLAGS_sigint_effect),
-    GetRequestedAction(FLAGS_sighup_effect));
+     GetRequestedAction(FLAGS_sigint_effect),
+     GetRequestedAction(FLAGS_sighup_effect));
 
     /*
     solver作用：（指定优化方法）
@@ -240,14 +315,20 @@ int train()
     3.周期性更新网络；
     4.记录网络训练中间过程，寻优过程中记录状态 
     */
+
+    // 声明boost库中智能指针solver，指向caffe::Solver对象，该对象由CreateSolver创建
+    // 用读取的SolverParameter创建Solver  
     shared_ptr<caffe::Solver<float> >
     solver(caffe::SolverRegistry<float>::CreateSolver(solver_param));
 
+    // Solver对象中方法的使用
     solver->SetActionFunction(signal_handler.GetActionFunction());
 
     // createSolver()这里应该是选择了默认的sgd
     // boost::shared_ptr 指针
     // 初始化solver
+    // 利用snapshot restore网络或利用weights初始化网络的参数
+    // 从snapshot或caffemodel中恢复train；
     if (FLAGS_snapshot.size()) 
     {
         LOG(INFO) << "Resuming from " << FLAGS_snapshot;
@@ -258,14 +339,18 @@ int train()
         CopyLayers(solver.get(), FLAGS_weights);
     }
 
+    // 进行训练  
     if (gpus.size() > 1) 
     {
+        // 这里是对于多GPU下的处理
         caffe::P2PSync<float> sync(solver, NULL, solver->param());
         sync.Run(gpus);
     } 
     else 
     {
         LOG(INFO) << "Starting Optimization";
+
+        // 初始化完成，开始优化网络（核心，重要）；
         solver->Solve();
     }
     
@@ -461,14 +546,26 @@ int time() {
 }
 RegisterBrewFunction(time);
 
+/*
+总结一下程序运行流程：
+main（）函数--->>GetBrewFunction函数--->>train函数--->>Solve()
+
+caffe-master/Tools文件夹下提供了caffe框架的主要工具（经编译后为可执行文件，在build/tools/下）。
+tools/caffe.cpp是caffe程序的入口（即main函数），一条标准的训练指令为：
+./build/tools/caffe train --solver=models/bvlc_reference_caffenet/solver.prototxt
+首先是caffe指令，可执行指令，train为caffe指令第一条参数，然后是指定solver文件。
+我们对照着该标准指令一步一步来“解析”，caffe.cpp中main函数代码如下：
+*/
 int main(int argc, char** argv) 
 {
+    // gflags库，具体说明紧接代码（未找到其定义，估计在gflags库文件中定义）
     // Print output to stderr (while still logging).
     FLAGS_alsologtostderr = 1;
     
     // Set version
     gflags::SetVersionString(AS_STRING(CAFFE_VERSION));
-    
+
+    // gflags库中为main函数设置usage信息：extern void SetUsageMessage(const std::string& usage);
     // Usage message.
     gflags::SetUsageMessage("command line brew\n"
     "usage: caffe <command> <args>\n\n"
@@ -477,10 +574,12 @@ int main(int argc, char** argv)
     "  test            score a model\n"
     "  device_query    show GPU diagnostic information\n"
     "  time            benchmark model execution time");
-    
+
+    // include/caffe/commom.hpp中声明的函数：Currently it initializes google flags and google logging.即初始化FLAGS.
     // Run tool or show usage.
     caffe::GlobalInit(&argc, &argv);
 
+    // 判断参数，参数为2，继续执行action函数，否则输出usage信息。
     // （1）main()函数中，输入的train，test，device_query，time。 通过下面两行进入程序。
     if (argc == 2) 
     {
@@ -488,6 +587,8 @@ int main(int argc, char** argv)
         try 
         {
 #endif
+            // GetBrewFunction函数返回函数指针，对于上面标准指令，则返回train函数指针
+            // 最后是执行相应的函数，如执行train函数，执行成功则返回0，main函数返回0.（caffe执行完毕）
             return GetBrewFunction(caffe::string(argv[1]))();
 #ifdef WITH_PYTHON_LAYER
         } 
@@ -500,6 +601,14 @@ int main(int argc, char** argv)
     } 
     else 
     {
+        // glags中为main函数提供usage信息：
+        // extern void ShowUsageWithFlags(const char *argv0);  // what --help does
+        // extern void ShowUsageWithFlagsRestrict(const char *argv0, const char *restrict);
+        // 其信息中会有“tools/caffe.cpp”中FLAG信息，如：-gpu,-weights,-solver,-snapshot,-model...
         gflags::ShowUsageWithFlagsRestrict(argv[0], "tools/caffe");
     }
 }
+
+/*
+gflags是google的一个开源的处理命令行参数的库。在使用命令行参数的文件文件中（源文件或头文件），首先使用一下定义语句进行变量的定义。DEFINE_int32，DEFINE_int64，DEFINE_bool，DEFINE_double，DEFINE_string等，语法为：DEFINE_int32(name, default_value, "description")。接着你就可以使用FLAGS_name变量了，这些变量的值则是由命令行参数传递，无则为默认值，在其他代码文件中若想用该命令参数，可以用DECLARE_int32(name)声明（name为int32类型，也可以使用其他支持的类型）。在caffe.cpp中有很多FLAGS_name定义，如DEFINE_string(gpu,"","some description"），则命令行后-gpu 0，表示FLAGS_gpu=0，默认值为空。
+*/

@@ -1,3 +1,2 @@
----- 局部响应归一化 Matches (2 in 1 files) ----
-Lrn_layer.cpp (src\caffe\layers):Local Response Normalization (LRN): 局部响应归一化
-Lrn_layer.cpp (src\caffe\layers):局部响应归一化层是一种侧抑制(lateral inhibition)，在局部输入区域上进行归一化。在ACROSS_CHANNELS模式下，局部区域扩展到相邻通道，但是没有空间扩展（也就是形状是local_size * 1 * 1）。在WITHIN_CHANNEL模式下，局部区域空间扩展，但是在各自的通道内（形状是1 * local_size * local_size）。每个输入值除以，n是每个局部区域的尺寸，求和是在以当前位置为中心的区域上操作。
+---- std::pair<string, float> Prediction; Matches (1 in 1 files) ----
+Classification.cpp (examples\cpp_classification):typedef std::pair<string, float> Prediction;

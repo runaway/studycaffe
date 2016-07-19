@@ -9,12 +9,23 @@
 #include "caffe/util/io.hpp"
 #include "caffe/util/upgrade_proto.hpp"
 
-// 主要实现了一个模板类solver,而且是个抽象类。
-namespace caffe {
+/*
+简要说明：slover是什么？solver是caffe中实现训练模型参数更新的优化算法，solver类
+派生出的类可以对整个网络进行训练。在caffe中有很多solver子类，即不同的优化算法，
+如随机梯度下降（SGD）。
+一个solver factory可以注册solvers，运行时，注册过的solvers通过
+SolverRegistry::CreateSolver(param)来调用。caffe提供两种方法注册一个solver
+*/
 
+// 主要实现了一个模板类solver,而且是个抽象类。
+namespace caffe 
+{
+
+// 声明Solver为模板类
 template<typename Dtype>
-void Solver<Dtype>::SetActionFunction(ActionCallback func) {
-  action_request_function_ = func;
+void Solver<Dtype>::SetActionFunction(ActionCallback func) 
+{
+    action_request_function_ = func;
 }
 
 template<typename Dtype>

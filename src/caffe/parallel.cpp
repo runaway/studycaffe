@@ -206,42 +206,53 @@ P2PSync<Dtype>::P2PSync(shared_ptr<Solver<Dtype> > root_solver,
       children_(),
       queue_(),
       initial_iter_(root_solver->iter()),
-      solver_() {
+      solver_() 
+{
 #ifndef CPU_ONLY
-  int initial_device;
-  CUDA_CHECK(cudaGetDevice(&initial_device));
-  const int self = param.device_id();
-  CUDA_CHECK(cudaSetDevice(self));
-
-  if (parent == NULL) {
-    solver_ = root_solver;
-  } else {
-    Caffe::set_root_solver(false);
-    solver_.reset(new WorkerSolver<Dtype>(param, root_solver.get()));
-    Caffe::set_root_solver(true);
-  }
-  this->configure(solver_.get());
-  solver_->add_callback(this);
-
-  if (parent) {
-    // Enable p2p access between devices
-    const int peer = parent->solver_->param().device_id();
-    int access;
-    CUDA_CHECK(cudaDeviceCanAccessPeer(&access, self, peer));
-    if (access) {
-      CUDA_CHECK(cudaDeviceEnablePeerAccess(peer, 0));
-    } else {
-      LOG(INFO)<< "GPU " << self << " does not have p2p access to GPU " << peer;
-    }
-    // Allocate receiving buffer on parent
-    CUDA_CHECK(cudaSetDevice(peer));
-    CUDA_CHECK(cudaMalloc(&parent_grads_, size_ * sizeof(Dtype)));
+    int initial_device;
+    CUDA_CHECK(cudaGetDevice(&initial_device));
+    const int self = param.device_id();
     CUDA_CHECK(cudaSetDevice(self));
-  }
 
-  CUDA_CHECK(cudaSetDevice(initial_device));
+    if (parent == NULL) 
+    {
+        solver_ = root_solver;
+    } 
+    else 
+    {
+        Caffe::set_root_solver(false);
+        solver_.reset(new WorkerSolver<Dtype>(param, root_solver.get()));
+        Caffe::set_root_solver(true);
+    }
+    
+    this->configure(solver_.get());
+    solver_->add_callback(this);
+
+    if (parent) 
+    {
+        // Enable p2p access between devices
+        const int peer = parent->solver_->param().device_id();
+        int access;
+        CUDA_CHECK(cudaDeviceCanAccessPeer(&access, self, peer));
+
+        if (access)
+        {
+            CUDA_CHECK(cudaDeviceEnablePeerAccess(peer, 0));
+        } 
+        else 
+        {
+            LOG(INFO)<< "GPU " << self << " does not have p2p access to GPU " << peer;
+        }
+        
+        // Allocate receiving buffer on parent
+        CUDA_CHECK(cudaSetDevice(peer));
+        CUDA_CHECK(cudaMalloc(&parent_grads_, size_ * sizeof(Dtype)));
+        CUDA_CHECK(cudaSetDevice(self));
+    }
+
+    CUDA_CHECK(cudaSetDevice(initial_device));
 #else
-  NO_GPU;
+    NO_GPU;
 #endif
 }
 

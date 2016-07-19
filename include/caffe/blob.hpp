@@ -29,11 +29,13 @@ namespace caffe {
  * TODO(dox): more thorough description.
  */
 // BLOB是SyncedMemory的包裹器  
+// 对SyncedMemory的封装，该类是Layer、Net、Solver之间进行交互时使用的基本计算单元。
 template <typename Dtype>
 class Blob {
  public:
   Blob()
        : data_(), diff_(), count_(0), capacity_(0) {}
+
 
   /// @brief Deprecated; use <code>Blob(const vector<int>& shape)</code>.
   explicit Blob(const int num, const int channels, const int height,
@@ -62,6 +64,7 @@ class Blob {
   void ReshapeLike(const Blob& other);
 
   // 输出数据的维度,以空格分隔，最后输出一维维度(total)  
+  // 将shape_中的内容以及count_拼接成字符串并返回，主要打日志。
   inline string shape_string() const {
     ostringstream stream;
     for (int i = 0; i < shape_.size(); ++i) {
@@ -70,6 +73,8 @@ class Blob {
     stream << "(" << count_ << ")";
     return stream.str();
   }
+
+  // 获取blob的维度信息
   inline const vector<int>& shape() const { return shape_; }
   /**
    * @brief Returns the dimension of the index-th axis (or the negative index-th
@@ -80,14 +85,18 @@ class Blob {
    *        Dies on out of range index.
    */
   // 计算从给定维度到最后一个维度的
+  // 获取blob的某一坐标轴上的维度（index如果是负数，则代表从最后一个坐标轴开始第-index个坐标轴）。
+  //       参数index代表第几个坐标轴，index可以取负数。
   inline int shape(int index) const {
     return shape_[CanonicalAxisIndex(index)];
   }
 
   // 返回数据的维度 
+  // 获取blob的坐标轴的个数。
   inline int num_axes() const { return shape_.size(); }
 
   // 返回数据的所有维度的相乘,即数据的个数  
+  // 获取blob的数据的个数。
   inline int count() const { return count_; } 
 
   /**
@@ -98,6 +107,7 @@ class Blob {
    *
    * @param end_axis The first axis to exclude from the slice.
    */
+   //  获取从start_axis坐标轴到end_axis坐标轴之间的数据的个数。
   inline int count(int start_axis, int end_axis) const {
     // 判断维度的索引是否在范围内 
     CHECK_LE(start_axis, end_axis);
@@ -134,6 +144,8 @@ class Blob {
    *        Dies on out of range index.
    */
   // 支持负数维度索引，负数表示从后往前，返回的是正确的维度索引（相当于将负数索引进行的转换） 
+  //       获取规范化的坐标索引，
+  //       axis_index可以是负数，如果是负数，则返回axis_index + num_axes()，即倒数第-axis_index个索引
   inline int CanonicalAxisIndex(int axis_index) const {
   // 判断是否在范围内[-numaxes, numaxes] 
     CHECK_GE(axis_index, -num_axes())
@@ -156,6 +168,8 @@ class Blob {
   inline int height() const { return LegacyShape(2); }
   /// @brief Deprecated legacy shape accessor width: use shape(3) instead.
   inline int width() const { return LegacyShape(3); }
+
+  // 返回某一坐标轴上的数据个数，index为坐标轴索引
   inline int LegacyShape(int index) const {
     // 检查blob的维度个数是不是小于4，也许以前的blob只有四维，但是现在的blob应该为了通用而采用了大于四维的方法 
     CHECK_LE(num_axes(), 4)
@@ -174,6 +188,8 @@ class Blob {
     }
     return shape(index);
   }
+
+  // 返回数据的偏移
 
   // 计算一维线性偏移量   
   inline int offset(const int n, const int c = 0, const int h = 0,
@@ -214,7 +230,9 @@ class Blob {
    * 从给定的blob进行复制，如果copy_diff=true则新的blob复制的是diff,如果reshape=true则改变新blob的形状 
    */  
   void CopyFrom(const Blob<Dtype>& source, bool copy_diff = false,  
-      bool reshape = false);  
+      bool reshape = false); 
+
+  // 获取某一位置的数据
   // 获取在内存下的数据(前向传播所用的数据)  
   inline Dtype data_at(const int n, const int c, const int h,  
       const int w) const {  
@@ -229,16 +247,21 @@ class Blob {
   inline Dtype data_at(const vector<int>& index) const {  
     return cpu_data()[offset(index)];  
   }  
+
+  // 获取某一位置的差值
   // 获取在内存下的diff数据(反传数据)  
   inline Dtype diff_at(const vector<int>& index) const {  
     return cpu_diff()[offset(index)];  
   }  
+
+  // 获取数据指针
   // 同步内存shared_ptr（不明白share_ptr的可以自行百度，引用计数管理机制）  
   inline const shared_ptr<SyncedMemory>& data() const {  
     CHECK(data_);  
     return data_;  
   }  
-  
+
+  // 获取差值数据指针
   inline const shared_ptr<SyncedMemory>& diff() const {  
     CHECK(diff_);  
     return diff_;  
@@ -299,6 +322,8 @@ class Blob {
    * 因为shared_ptr指针被用=重置的时候回调用响应的析构器。 
    */  
   void ShareDiff(const Blob& other);  
+
+  // 判断当前blob的shape和BlobProto的是否相匹配
   // 判断形状是否相等  
   bool ShapeEquals(const BlobProto& other);  
   

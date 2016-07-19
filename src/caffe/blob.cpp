@@ -79,6 +79,14 @@ Whenever a the data is called, it checks whether the previous statement was a mu
 */
 namespace caffe {
 
+/*
+修改blob的维度，如果有必要，会创建一块新的内存。该函数既可以在初始化内存时用来
+创建初始内存，也可以在Layer::Reshape或Layer::Forward时用来调整top blob的维度。
+当改变blob的size时，只有在当前内存不够用时才会重新创建，而且超过的内存资源不会
+被释放。
+注意：reshape一个输入blob后立即调用Net::Backward是错误的，应该通过Net::Forward
+或Net::Reshape将新的输入的shape传递到更高层。
+*/
 // reshape 的具体实现  
 // 过时的方法最终是调用的新的reshape方法  
 template <typename Dtype>  
@@ -148,6 +156,7 @@ void Blob<Dtype>::Reshape(const BlobShape& shape) {
 输入：Bolb类型的other 
 输出：无
 */
+// 修改blob的维度，将当前blob的维度修改成和other一样
 template <typename Dtype>  
 void Blob<Dtype>::ReshapeLike(const Blob<Dtype>& other) {  
   Reshape(other.shape());  
@@ -183,12 +192,14 @@ const int* Blob<Dtype>::gpu_shape() const {
   // 因此也分gpu_data和cpu_data  
   return (const int*)shape_data_->gpu_data();
 }
-
+// 获取cpu数据指针
 template <typename Dtype>
 const Dtype* Blob<Dtype>::cpu_data() const {
   CHECK(data_);
   return (const Dtype*)data_->cpu_data();
 }
+
+// 设置cpu数据指针
 // 功能：改变CPU的数据
 template <typename Dtype>
 void Blob<Dtype>::set_cpu_data(Dtype* data) {
@@ -218,6 +229,7 @@ const Dtype* Blob<Dtype>::gpu_diff() const {
 后两个 调用to_gpu(),返回gpu_ptr；第一个对于data对象，第二个对于diff对象
 */
 
+// 获取可修改的cpu数据指针
 template <typename Dtype>
 Dtype* Blob<Dtype>::mutable_cpu_data() {
   CHECK(data_);
@@ -241,13 +253,21 @@ Dtype* Blob<Dtype>::mutable_gpu_diff() {
   CHECK(diff_);
   return static_cast<Dtype*>(diff_->mutable_gpu_data());
 }
-
+/*
+ 让当前blob的data_指向入参other的data_，这在各Layer进行Forward操作时很有用，可以进行简单的数据拷贝。
+         该函数有可能会释放掉当前blob的data_，因为shared_ptr类型的data_会在使用操作符”=“进行赋值时调用其reset函数，从而调用析构函数
+*/
 // 将其他blob的数据复制到当前的blob中去  
 template <typename Dtype>  
 void Blob<Dtype>::ShareData(const Blob& other) {  
   CHECK_EQ(count_, other.count());  
   data_ = other.data();  
 }  
+
+/*
+ 让当前blob的diff_指向入参other的diff_，这在各Layer进行Forward操作时很有用，可以进行简单的数据拷贝。
+         该函数有可能会释放掉当前blob的diff_，因为shared_ptr类型的diff_会在使用操作符”=“进行赋值时调用其reset函数，从而调用析构函数
+*/
 // 将其他blob的diff数据复制到当前的blob中去  
 template <typename Dtype>  
 void Blob<Dtype>::ShareDiff(const Blob& other) {  
@@ -259,7 +279,8 @@ void Blob<Dtype>::ShareDiff(const Blob& other) {
 参数更新函数----Update方法：
 Blob还有一个参数更新函数也很重要Update, 它会被网络中存储参数的Blob调用，完成梯度下降过程中的参数更新。注意注释里说的“parameter blobs”，所以是针对存储参数的Blob进行参数更新。
 */
-  
+
+// 对数据进行计算，并更新数据
 // The "update" method is used for parameter blobs in a Net, which are stored  
 // as Blob<float> or Blob<double> -- hence we do not define it for  
 // Blob<int> or Blob<unsigned int>.  
@@ -324,7 +345,8 @@ template <> int Blob<int>::asum_data() const {
   NOT_IMPLEMENTED;  
   return 0;  
 }  
-// 计算data的L1范数  
+// 计算data的L1范数 
+// 计算blob中各数据的绝对值之和
 template <typename Dtype>  
 Dtype Blob<Dtype>::asum_data() const {  
   if (!data_) { return 0; }  
@@ -354,7 +376,7 @@ template <> unsigned int Blob<unsigned int>::asum_diff() const {
   NOT_IMPLEMENTED;  
   return 0;  
 }  
-  
+// 计算blob中各差值的绝对值之和
 template <> int Blob<int>::asum_diff() const {  
   NOT_IMPLEMENTED;  
   return 0;  
@@ -385,7 +407,7 @@ Dtype Blob<Dtype>::asum_diff() const {
   }  
   return 0;  
 }  
-  
+// 计算blob中各数据的平方之和  
 template <> unsigned int Blob<unsigned int>::sumsq_data() const {  
   NOT_IMPLEMENTED;  
   return 0;  
@@ -423,7 +445,7 @@ Dtype Blob<Dtype>::sumsq_data() const {
   }  
   return sumsq;  
 }  
-  
+//  计算blob中各差值的平方之和  
 template <> unsigned int Blob<unsigned int>::sumsq_diff() const {  
   NOT_IMPLEMENTED;  
   return 0;  
@@ -469,7 +491,7 @@ template <> void Blob<unsigned int>::scale_data(unsigned int scale_factor) {
 template <> void Blob<int>::scale_data(int scale_factor) {  
   NOT_IMPLEMENTED;  
 }  
-  
+// 用一个缩放因子对blob中的各数据进行缩放  
 // 将data部分乘以一个因子scale_factor  
 template <typename Dtype>  
 void Blob<Dtype>::scale_data(Dtype scale_factor) {  
@@ -495,7 +517,7 @@ void Blob<Dtype>::scale_data(Dtype scale_factor) {
     LOG(FATAL) << "Unknown SyncedMemory head state: " << data_->head();  
   }  
 }  
-  
+// 用一个缩放因子对blob中的各差值进行缩放  
 template <> void Blob<unsigned int>::scale_diff(unsigned int scale_factor) {  
   NOT_IMPLEMENTED;  
 }  
@@ -563,6 +585,12 @@ bool Blob<Dtype>::ShapeEquals(const BlobProto& other) {
 2.如果是CPU： 
 如果是拷贝diff：调用memcpy函数将source的diff拷贝过来 
 否则拷贝data
+
+从一个源blob中拷贝数据
+参数source:要拷贝数据的源Blob
+参数copy_diff：如果false，copy数据；如果true拷贝差值
+参数reshape：如果false,要求当前blob和源blob的shape一致；
+             如果true,在shape不一致的情况下会自动reshape当前的blob
 */
   
 // 从别的blob进行复制  
