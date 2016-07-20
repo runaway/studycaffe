@@ -61,33 +61,40 @@ lr_policy设置为step,则学习率的变化规则为 base_lr * gamma ^ (floor(iter / stepsiz
 template <typename Dtype>
 class SGDSolver : public Solver<Dtype> {
  public:
+    //继承solver的参数，并添加PreSolve()方法
   explicit SGDSolver(const SolverParameter& param)
       : Solver<Dtype>(param) { PreSolve(); }
   explicit SGDSolver(const string& param_file)
       : Solver<Dtype>(param_file) { PreSolve(); }
-  virtual inline const char* type() const { return "SGD"; }
+  virtual inline const char* type() const { 
+//返回SGD类型  
+    return "SGD"; }
 
   const vector<shared_ptr<Blob<Dtype> > >& history() { return history_; }
 
  protected:
   void PreSolve();
-  Dtype GetLearningRate();
+  Dtype GetLearningRate();//获取学习率  
   virtual void ApplyUpdate();
-  virtual void Normalize(int param_id);
-  virtual void Regularize(int param_id);
-  virtual void ComputeUpdateValue(int param_id, Dtype rate);
-  virtual void ClipGradients();
+  virtual void Normalize(int param_id);//标准化  
+  virtual void Regularize(int param_id);//正则化  
+  virtual void ComputeUpdateValue(int param_id, Dtype rate);//计算更新值  
+  virtual void ClipGradients();//修正梯度  
+
+    //Snapshot的一系列操作 
   virtual void SnapshotSolverState(const string& model_filename);
   virtual void SnapshotSolverStateToBinaryProto(const string& model_filename);
   virtual void SnapshotSolverStateToHDF5(const string& model_filename);
   virtual void RestoreSolverStateFromHDF5(const string& state_file);
   virtual void RestoreSolverStateFromBinaryProto(const string& state_file);
+
+    //history维护旧的动量数据。update维护更新的相关数据，而且在snapshots中是不需要的。temp维护其他信息，这些信息可能是在计算梯度或者更新时需要的，而且在snapshots中是不需要的。 
   // history maintains the historical momentum data.
   // update maintains update related data and is not needed in snapshots.
   // temp maintains other information that might be needed in computation
   //   of gradients/updates and is not needed in snapshots
   vector<shared_ptr<Blob<Dtype> > > history_, update_, temp_;
-
+ //禁止复制 
   DISABLE_COPY_AND_ASSIGN(SGDSolver);
 };
 

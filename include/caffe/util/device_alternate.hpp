@@ -69,8 +69,11 @@ void classname<Dtype>::funcname##_##gpu(const vector<Blob<Dtype>*>& top, \
 // caffe采取的线程格和线程块的维数设计  
 // blockDim.x* gridDim.x表示的是该线程格所有线程的数量  
 // n表示核函数总共要处理的元素个数 
-// 有时候， n 会大于 blockDim.x* gridDim.x ，因此并不能一个线程处理一个元素。由此通过上面的方法，让一个线程串行（ for 循环）处理几个元素。这其实是常用的伎俩，得借鉴学习一下。
-// 明显就是算两个向量的点积了。由于向量的维数可能大于该 kernel 函数线程格的总线程数量。因此有些线程可以要串行处理几个元素。
+// 有时候， n 会大于 blockDim.x* gridDim.x ，因此并不能一个线程处理一个元素。由
+// 此通过上面的方法，让一个线程串行（ for 循环）处理几个元素。这其实是常用的伎
+// 俩，得借鉴学习一下。
+// 明显就是算两个向量的点积了。由于向量的维数可能大于该 kernel 函数线程格的总线
+// 程数量。因此有些线程可以要串行处理几个元素。
 // CUDA: grid stride looping
 #define CUDA_KERNEL_LOOP(i, n) \
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; \
@@ -86,15 +89,16 @@ namespace caffe {
 const char* cublasGetErrorString(cublasStatus_t error);
 const char* curandGetErrorString(curandStatus_t error);
 
-// 先看看 caffe 采取的线程格和线程块的维数设计，还是从 common.hpp 可以看到
+// 先看看caffe采取的线程格和线程块的维数设计，还是从 common.hpp 可以看到
 // CAFFE_CUDA_NUM_THREADS CAFFE_GET_BLOCKS ( const int N) 明显都是一维的。
 // CUDA: use 512 threads per block
 const int CAFFE_CUDA_NUM_THREADS = 512;
 
 //CUDA线程的块的数量  
 // CUDA: number of blocks for threads.
-inline int CAFFE_GET_BLOCKS(const int N) {
-  return (N + CAFFE_CUDA_NUM_THREADS - 1) / CAFFE_CUDA_NUM_THREADS;
+inline int CAFFE_GET_BLOCKS(const int N) 
+{
+    return (N + CAFFE_CUDA_NUM_THREADS - 1) / CAFFE_CUDA_NUM_THREADS;
 }
 
 }  // namespace caffe

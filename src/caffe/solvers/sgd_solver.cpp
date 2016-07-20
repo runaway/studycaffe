@@ -6,7 +6,13 @@
 #include "caffe/util/io.hpp"
 #include "caffe/util/upgrade_proto.hpp"
 
-namespace caffe {
+/*
+新版的caffe就够模块更加规范化了一点，把所有的求解方法都另外分到一个solvers里面，
+里面有所有的求解方法。
+*/
+
+namespace caffe 
+{
 /*
 功能：得到学习率 
 步骤： 
@@ -79,43 +85,68 @@ Dtype SGDSolver<Dtype>::GetLearningRate() {
 3. 向history压入与网络的每一层blob相同大小的空间 
 输入：无 
 输出：无
+
+这个是干什么的呢？好像history维护旧的动量数据。update维护更新的相关数据，而且在
+snapshots中是不需要的。temp维护其他信息，这些信息可能是在计算梯度或者更新时需要
+的，而且在snapshots中是不需要的。前面的这几个参数输入到vector，用于后面的blob输
+出吧 
 */
-template <typename Dtype>
-void SGDSolver<Dtype>::PreSolve() {
-  // Initialize the history
-  const vector<Blob<Dtype>*>& net_params = this->net_->learnable_params();
-  history_.clear();
-  update_.clear();
-  temp_.clear();
-  for (int i = 0; i < net_params.size(); ++i) {
-    const vector<int>& shape = net_params[i]->shape();
-    history_.push_back(shared_ptr<Blob<Dtype> >(new Blob<Dtype>(shape)));
-    update_.push_back(shared_ptr<Blob<Dtype> >(new Blob<Dtype>(shape)));
-    temp_.push_back(shared_ptr<Blob<Dtype> >(new Blob<Dtype>(shape)));
-  }
-}
 
 template <typename Dtype>
-void SGDSolver<Dtype>::ClipGradients() {
-  const Dtype clip_gradients = this->param_.clip_gradients();
-  if (clip_gradients < 0) { return; }
-  const vector<Blob<Dtype>*>& net_params = this->net_->learnable_params();
-  Dtype sumsq_diff = 0;
-  for (int i = 0; i < net_params.size(); ++i) {
-    sumsq_diff += net_params[i]->sumsq_diff();
-  }
-  const Dtype l2norm_diff = std::sqrt(sumsq_diff);
-  if (l2norm_diff > clip_gradients) {
-    Dtype scale_factor = clip_gradients / l2norm_diff;
-    LOG(INFO) << "Gradient clipping: scaling down gradients (L2 norm "
+void SGDSolver<Dtype>::PreSolve() 
+{
+    // Initialize the history
+    const vector<Blob<Dtype>*>& net_params = this->net_->learnable_params();
+    history_.clear();
+    update_.clear();
+    temp_.clear();
+    
+    for (int i = 0; i < net_params.size(); ++i) 
+    {
+        const vector<int>& shape = net_params[i]->shape();
+        history_.push_back(shared_ptr<Blob<Dtype> >(new Blob<Dtype>(shape)));
+        update_.push_back(shared_ptr<Blob<Dtype> >(new Blob<Dtype>(shape)));
+        temp_.push_back(shared_ptr<Blob<Dtype> >(new Blob<Dtype>(shape)));
+    }
+}
+
+// 修正梯度
+template <typename Dtype>
+void SGDSolver<Dtype>::ClipGradients() 
+{
+    const Dtype clip_gradients = this->param_.clip_gradients();
+
+    if (clip_gradients < 0) 
+    { 
+        return; 
+    }
+
+    const vector<Blob<Dtype>*>& net_params = this->net_->learnable_params();
+    Dtype sumsq_diff = 0;
+
+    for (int i = 0; i < net_params.size(); ++i) 
+    {
+        sumsq_diff += net_params[i]->sumsq_diff();
+    }
+    
+    const Dtype l2norm_diff = std::sqrt(sumsq_diff);
+
+    // 二范数按照scale_factor比例缩小 
+    if (l2norm_diff > clip_gradients) 
+    {
+        Dtype scale_factor = clip_gradients / l2norm_diff;
+        LOG(INFO) << "Gradient clipping: scaling down gradients (L2 norm "
         << l2norm_diff << " > " << clip_gradients << ") "
         << "by scale factor " << scale_factor;
-    for (int i = 0; i < net_params.size(); ++i) {
-      net_params[i]->scale_diff(scale_factor);
+        
+        for (int i = 0; i < net_params.size(); ++i) 
+        {
+            net_params[i]->scale_diff(scale_factor);
+        }
     }
-  }
 }
 
+// 应用更新  
 template <typename Dtype>
 void SGDSolver<Dtype>::ApplyUpdate() 
 {
@@ -136,13 +167,14 @@ void SGDSolver<Dtype>::ApplyUpdate()
         Normalize(param_id);
         Regularize(param_id);
 
-        // 不同的模型训练方法通过重载函数ComputeUpdateValue( )实现计算update参数的核心功能
+        // 不同的模型训练方法通过重载函数ComputeUpdateValue()实现计算update参数的核心功能
         ComputeUpdateValue(param_id, rate);
     }
 
     this->net_->Update();
 }
 
+// 这个是归一化 
 template <typename Dtype>
 void SGDSolver<Dtype>::Normalize(int param_id) 
 {
@@ -153,6 +185,8 @@ void SGDSolver<Dtype>::Normalize(int param_id)
     
     // Scale gradient to counterbalance accumulation.
     const vector<Blob<Dtype>*>& net_params = this->net_->learnable_params();
+
+     //实现归一化操作
     const Dtype accum_normalization = Dtype(1.) / this->param_.iter_size();
 
     switch (Caffe::mode()) 
@@ -192,6 +226,7 @@ void SGDSolver<Dtype>::Regularize(int param_id) {
   case Caffe::CPU: {
     if (local_decay) {
       if (regularization_type == "L2") {
+            //添加衰减权重，这一块忘记话，再看一下前面math_functions  
         // add weight decay
         caffe_axpy(net_params[param_id]->count(),
             local_decay,
@@ -288,7 +323,7 @@ caffe_axpy调用了cblas_saxpy，即调用了cblas_saxpy
 所以caffe_cpu_axpby比caffe_axpy多输入了一个beta参数，多调用了cblas_sscal(N, beta, Y, incY); 
 4. GPU同理
 */
-
+// 计算更新值 
 template <typename Dtype>
 void SGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) 
 {
@@ -316,15 +351,17 @@ void SGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate)
     {
 #ifndef CPU_ONLY
         sgd_update_gpu(net_params[param_id]->count(),
-        net_params[param_id]->mutable_gpu_diff(),
-        history_[param_id]->mutable_gpu_data(),
-        momentum, local_rate);
+            net_params[param_id]->mutable_gpu_diff(),
+            history_[param_id]->mutable_gpu_data(),
+            momentum, local_rate);
 #else
         NO_GPU;
 #endif
         break;
         }
-        default:
+    
+    default:
+            
         LOG(FATAL) << "Unknown caffe mode: " << Caffe::mode();
     }
 }

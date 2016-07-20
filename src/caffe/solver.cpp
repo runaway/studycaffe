@@ -57,10 +57,11 @@ Solver<Dtype>::Solver(const SolverParameter& param, const Solver* root_solver)
 template <typename Dtype>
 Solver<Dtype>::Solver(const string& param_file, const Solver* root_solver)
     : net_(), callbacks_(), root_solver_(root_solver),
-      requested_early_exit_(false) {
-  SolverParameter param;
-  ReadSolverParamsFromTextFileOrDie(param_file, &param);
-  Init(param);
+      requested_early_exit_(false) 
+{
+    SolverParameter param;
+    ReadSolverParamsFromTextFileOrDie(param_file, &param);
+    Init(param);
 }
 
 // 初始化网络 
@@ -106,58 +107,65 @@ void Solver<Dtype>::Init(const SolverParameter& param)
 template <typename Dtype>
 void Solver<Dtype>::InitTrainNet() 
 {
-  const int num_train_nets = param_.has_net() + param_.has_net_param() +
+    const int num_train_nets = param_.has_net() + param_.has_net_param() +
       param_.has_train_net() + param_.has_train_net_param();
-  const string& field_names = "net, net_param, train_net, train_net_param";
-  CHECK_GE(num_train_nets, 1) << "SolverParameter must specify a train net "
+    const string& field_names = "net, net_param, train_net, train_net_param";
+    CHECK_GE(num_train_nets, 1) << "SolverParameter must specify a train net "
       << "using one of these fields: " << field_names;
-  CHECK_LE(num_train_nets, 1) << "SolverParameter must not contain more than "
+    CHECK_LE(num_train_nets, 1) << "SolverParameter must not contain more than "
       << "one of these fields specifying a train_net: " << field_names;
-  NetParameter net_param;
-  
-  if (param_.has_train_net_param()) {
-    LOG_IF(INFO, Caffe::root_solver())
-        << "Creating training net specified in train_net_param.";
-    net_param.CopyFrom(param_.train_net_param());
-  } else if (param_.has_train_net()) {
-    LOG_IF(INFO, Caffe::root_solver())
-        << "Creating training net from train_net file: " << param_.train_net();
-    ReadNetParamsFromTextFileOrDie(param_.train_net(), &net_param);
-  }
-  
-  if (param_.has_net_param()) {
-    LOG_IF(INFO, Caffe::root_solver())
-        << "Creating training net specified in net_param.";
-    net_param.CopyFrom(param_.net_param());
-  }
-  
-  if (param_.has_net()) {
-    LOG_IF(INFO, Caffe::root_solver())
-        << "Creating training net from net file: " << param_.net();
-    ReadNetParamsFromTextFileOrDie(param_.net(), &net_param);
-  }
-  
-  // Set the correct NetState.  We start with the solver defaults (lowest
-  // precedence); then, merge in any NetState specified by the net_param itself;
-  // finally, merge in any NetState specified by the train_state (highest
-  // precedence).
-  NetState net_state;
-  net_state.set_phase(TRAIN);
+    NetParameter net_param;
 
-  // 从低到高获取state,最终从最高优先级SolverParameter类型中的train_state,显然这
-  // 会覆盖掉之前获取的state。  
-  net_state.MergeFrom(net_param.state());
+    if (param_.has_train_net_param()) 
+    {
+        LOG_IF(INFO, Caffe::root_solver())
+            << "Creating training net specified in train_net_param.";
+        net_param.CopyFrom(param_.train_net_param());
+    } 
+    else if (param_.has_train_net()) 
+    {
+        LOG_IF(INFO, Caffe::root_solver())
+            << "Creating training net from train_net file: " << param_.train_net();
+        ReadNetParamsFromTextFileOrDie(param_.train_net(), &net_param);
+    }
 
-  // 这里获取的state可以为Netparameter中的state赋值，然后可以根据LayerParameter
-  // 中的include和exclude来确定该层是否应该包含在网络中。  
-  net_state.MergeFrom(param_.train_state());
+    if (param_.has_net_param()) 
+    {
+        LOG_IF(INFO, Caffe::root_solver())
+            << "Creating training net specified in net_param.";
+        net_param.CopyFrom(param_.net_param());
+    }
 
-  // 这是Initialize train net的一部分工作。InitTestNets也是如此 
-  net_param.mutable_state()->CopyFrom(net_state);
+    if (param_.has_net()) 
+    {
+        LOG_IF(INFO, Caffe::root_solver())
+            << "Creating training net from net file: " << param_.net();
+        ReadNetParamsFromTextFileOrDie(param_.net(), &net_param);
+    }
+
+    // Set the correct NetState.  We start with the solver defaults (lowest
+    // precedence); then, merge in any NetState specified by the net_param itself;
+    // finally, merge in any NetState specified by the train_state (highest
+    // precedence).
+    NetState net_state;
+    net_state.set_phase(TRAIN);
+
+    // 从低到高获取state,最终从最高优先级SolverParameter类型中的train_state,显
+    // 然这会覆盖掉之前获取的state。  
+    net_state.MergeFrom(net_param.state());
+
+    // 这里获取的state可以为Netparameter中的state赋值，然后可以根据
+    // LayerParameter中的include和exclude来确定该层是否应该包含在网络中。  
+    net_state.MergeFrom(param_.train_state());
+
+    // 这是Initialize train net的一部分工作。InitTestNets也是如此 
+    net_param.mutable_state()->CopyFrom(net_state);
 
     if (Caffe::root_solver()) 
     {
-        // shared_ptr的reset()函数是将引用计数减1，停止对指针的共享，除非引用计数为0，否则不会发生删除操作。带参数的reset()则类似相同形式的构造函数，原指针引用计数减1的同时改为管理另外一个指针。 
+        // shared_ptr的reset()函数是将引用计数减1，停止对指针的共享，除非引用计
+        // 数为0，否则不会发生删除操作。带参数的reset()则类似相同形式的构造函数，
+        // 原指针引用计数减1的同时改为管理另外一个指针。 
         // 调用模板类的构造函数，进行net的初始化  
         net_.reset(new Net<Dtype>(net_param));
     } 
@@ -183,13 +191,13 @@ void Solver<Dtype>::InitTestNets()
     
     if (num_generic_nets) 
     {
-    CHECK_GE(param_.test_iter_size(), num_test_nets)
-      << "test_iter must be specified for each test network.";
+        CHECK_GE(param_.test_iter_size(), num_test_nets)
+          << "test_iter must be specified for each test network.";
     } 
     else 
     {
-    CHECK_EQ(param_.test_iter_size(), num_test_nets)
-      << "test_iter must be specified for each test network.";
+        CHECK_EQ(param_.test_iter_size(), num_test_nets)
+          << "test_iter must be specified for each test network.";
     }
     
     // If we have a generic net (specified by net or net_param, rather than
@@ -268,6 +276,7 @@ void Solver<Dtype>::InitTestNets()
         {
             net_state.MergeFrom(param_.test_state(i));
         }
+        
         net_params[i].mutable_state()->CopyFrom(net_state);
         LOG(INFO)
         << "Creating test net (#" << i << ") specified by " << sources[i];
@@ -372,7 +381,7 @@ void Solver<Dtype>::Step(int iters)
                     LOG_IF(INFO, Caffe::root_solver()) << "    Train net output #"
                     << score_index++ << ": " << output_name << " = "
                     << result_vec[k] << loss_msg_stream.str();
-                    }
+                }
             }
         }
         
