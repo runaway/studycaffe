@@ -15,6 +15,9 @@
 Caffe中的master分支已经将vision_layers.hpp中的各个层分散到layers中去了，因此如
 果你是主分支的代码，请在include/layers中找BaseConvolutionLayer和ConvolutionLayer
 的头文件的定义。
+Vision Layers
+
+可视化层来自于头文件 Header: ./include/caffe/vision_layers.hpp 一般输入和输出都是图像，这一层关注图像的2维的几何结构，并根据此结构对输入进行处理，特别是，大多数可视化层都通过对一些区域的操作，产生相关的区域进行输出，相反的是其他层忽视结合结构，只是把输入当作一个一维的大规模的向量进行处理。
 */
 namespace caffe {
 

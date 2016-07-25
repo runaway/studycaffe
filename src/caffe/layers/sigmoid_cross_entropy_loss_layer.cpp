@@ -2,7 +2,18 @@
 
 #include "caffe/layers/sigmoid_cross_entropy_loss_layer.hpp"
 #include "caffe/util/math_functions.hpp"
+/*
+为了训练我们的模型，我们首先需要定义一个指标来评估这个模型是好的。其实，在机器学习，我们通常定义指
+标来表示一个模型是坏的，这个指标称为成本（cost）或损失（loss），然后尽量最小化这个指标。但是，这两
+种方式是相同的。
+一个非常常见的，非常漂亮的成本函数是“交叉熵”（cross-entropy）。交叉熵产生于信息论里面的信息压缩编
+码技术，但是它后来演变成为从博弈论到机器学习等其他领域里的重要技术手段。它的定义如下：
 
+y 是我们预测的概率分布, y' 是实际的分布（我们输入的one-hot vector)。比较粗糙的理解是，交叉熵是用来
+衡量我们的预测用于描述真相的低效性。更详细的关于交叉熵的解释超出本教程的范畴，但是你很有必要好好理
+解它。
+
+*/
 namespace caffe {
 
 template <typename Dtype>

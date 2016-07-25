@@ -1,2 +1,5 @@
----- std::pair<string, float> Prediction; Matches (1 in 1 files) ----
-Classification.cpp (examples\cpp_classification):typedef std::pair<string, float> Prediction;
+---- kernel_size (or kernel_h and kernel_w) Matches (4 in 3 files) ----
+Conv_layer.cpp (src\caffe\layers):kernel_size (or kernel_h and kernel_w): 每个滤波器的高和宽
+Layer.cpp (src\caffe):kernel_size (or kernel_h and kernel_w)：过滤器的大小（也就是所谓“核”的大小）。
+Layer.cpp (src\caffe):kernel_size (or kernel_h and kernel_w)：过滤器的大小
+Pooling_layer.cpp (src\caffe\layers):kernel_size (or kernel_h and kernel_w): 每个滤波器的高和宽

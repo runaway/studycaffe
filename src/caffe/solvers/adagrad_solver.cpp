@@ -2,10 +2,7 @@
 
 #include "caffe/sgd_solvers.hpp"
 
-/*
-新版的caffe就够模块更加规范化了一点，把所有的求解方法都另外分到一个solvers里面，里面有所有的求解方法。
-那我们就先看看中介部分的sgd_solvers
-*/
+
 
 namespace caffe {
 
