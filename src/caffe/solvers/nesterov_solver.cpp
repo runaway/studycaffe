@@ -19,11 +19,13 @@ void NesterovSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) {
   Dtype local_rate = rate * net_params_lr[param_id];
   switch (Caffe::mode()) {
   case Caffe::CPU: {
+    // 如果梯度求解时出现迭代倒退时需要将当前动量保存下来，一起不是很理解动量，其实就是每次梯度下降的时候往前迭代需要一定的动量(按照物理理解)   
     // save history momentum for stepping back
     caffe_copy(net_params[param_id]->count(),
         this->history_[param_id]->cpu_data(),
         this->update_[param_id]->mutable_cpu_data());
 
+    // 这个算法也不是很复杂，所以代码比较简单点  
     // update history
     caffe_cpu_axpby(net_params[param_id]->count(), local_rate,
               net_params[param_id]->cpu_diff(), momentum,

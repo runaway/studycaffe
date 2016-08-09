@@ -275,7 +275,8 @@ void BaseConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
 
 // 计算forward_pass
 /*
-1.第一部分先将 input 变成一维具有（channel, height, weight）形式的array。在conv_im2col_cpu里实现， 
+1.第一部分先将 input变成一维具有（channel, height, weight）形式的array。在
+  conv_im2col_cpu里实现， 
 2.第二部分做卷积，实际上是将3D的卷积变成2D的矩阵相乘。
 
 下面这个例子详细说明这个过程 
@@ -283,7 +284,9 @@ void BaseConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
 
 kernel_dim=channel_in?kernel_width?kernel_height
 out_spatial=height_out?width_out
-这样做的出发点就是把3D运算变成2D运算, 对于weight, 把每一个小的卷积块平展成一个array, 所有的小卷积块变成矩阵。对应的，input image也要变成一个2维矩阵。实际上，就是对每一个output上的一点， 拿到在原图中得到这点的对应kernel的那些点，并flat它们。
+这样做的出发点就是把3D运算变成2D运算, 对于weight, 把每一个小的卷积块平展成一个
+array, 所有的小卷积块变成矩阵。对应的，input image也要变成一个2维矩阵。实际上，
+就是对每一个output上的一点,拿到在原图中得到这点的对应kernel的那些点,并flat它们。
 */
 
 template <typename Dtype>
@@ -297,8 +300,8 @@ void BaseConvolutionLayer<Dtype>::forward_cpu_gemm(const Dtype* input,
         if (!skip_im2col) 
         {
             // 如果没有1x1卷积，也没有skip_im2col  
-            // 则使用conv_im2col_cpu对使用卷积核滑动过程中的每一个kernel大小的图像块  
-            // 变成一个列向量，形成一个height=kernel_dim_的  
+            // 则使用conv_im2col_cpu对使用卷积核滑动过程中的每一个kernel大小的图
+            // 像块变成一个列向量，形成一个height=kernel_dim_的  
             // width = 卷积后图像heght*卷积后图像width  
             conv_im2col_cpu(input, col_buffer_.mutable_cpu_data());
         }

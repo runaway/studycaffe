@@ -25,12 +25,15 @@ template<>
 void caffe_cpu_gemm<double>(const CBLAS_TRANSPOSE TransA,
     const CBLAS_TRANSPOSE TransB, const int M, const int N, const int K,
     const double alpha, const double* A, const double* B, const double beta,
-    double* C) {
-  int lda = (TransA == CblasNoTrans) ? K : M;
-  int ldb = (TransB == CblasNoTrans) ? N : K;
+    double* C) 
+{
+    int lda = (TransA == CblasNoTrans) ? K : M;
+    int ldb = (TransB == CblasNoTrans) ? N : K;
 
-  // cblas_dgemm 是 blas的一个函数，d 代表 double-precision (single-precision is s). ge代表相乘，mm代表矩阵和矩阵相乘（mv则是矩阵和向量相乘）。
-  cblas_dgemm(CblasRowMajor, TransA, TransB, M, N, K, alpha, A, lda, B,
+    // cblas_dgemm 是 blas的一个函数，d 代表 double-precision 
+    // (single-precision is s). ge代表相乘，mm代表矩阵和矩阵相乘（mv则是矩阵和向量相乘）。
+    // 这个函数的作用是：C = alpha*AB + beta*C, 其中M、N分别是C的num_rows 和 num_cols
+    cblas_dgemm(CblasRowMajor, TransA, TransB, M, N, K, alpha, A, lda, B,
       ldb, beta, C, N);
 }
 
