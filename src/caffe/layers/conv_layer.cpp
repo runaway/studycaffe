@@ -27,12 +27,14 @@ weight_filter [default type: 'constant' value: 0]
 可选的
 bias_term [default true]: 是否学习和应用一组biase到滤波器输出
 pad (or pad_h and pad_w) [default 0]: 指定在输入图像的每个边隐含添加的像素数目
-stride (or stride_h and stride_w) [default 1]: 指定应用滤波器到图像时滤波器的间隔
-group (g) [default 1]: 如果 g > 1，我们限制每个滤波器连接到输入的子集。特别地，输入和输出通道被分为g组，第i组输出仅仅连接到第i组输入。
+stride(or stride_h and stride_w)[default 1]: 指定应用滤波器到图像时滤波器的间隔
+group (g) [default 1]: 如果 g > 1，我们限制每个滤波器连接到输入的子集。特别地，
+输入和输出通道被分为g组，第i组输出仅仅连接到第i组输入。
 输入： n * c_i * h_i * w_i
-输出：n * c_o * h_o * w_o，其中h_o = (h_i + 2 * pad_h - kernel_h) / stride_h + 1，w_o可得类似结果。
+输出：n * c_o * h_o * w_o，其中h_o = (h_i + 2 * pad_h - kernel_h) / stride_h + 1，
+w_o可得类似结果。
+
 例子：
- 
 
 1
 2
@@ -80,7 +82,8 @@ layer {
     }
   }
 }
-Convolution layer卷积输入图像和一组可学习的滤波器，每个滤波器对应地产生输出图像的一个feature map。
+Convolution layer卷积输入图像和一组可学习的滤波器，每个滤波器对应地产生输出图像
+的一个feature map。
 
 */
 namespace caffe {

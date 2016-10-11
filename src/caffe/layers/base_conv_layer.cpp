@@ -17,14 +17,19 @@ Caffe中的master分支已经将vision_layers.hpp中的各个层分散到layers中去了，因此如
 的头文件的定义。
 Vision Layers
 
-可视化层来自于头文件 Header: ./include/caffe/vision_layers.hpp 一般输入和输出都是图像，这一层关注图像的2维的几何结构，并根据此结构对输入进行处理，特别是，大多数可视化层都通过对一些区域的操作，产生相关的区域进行输出，相反的是其他层忽视结合结构，只是把输入当作一个一维的大规模的向量进行处理。
+可视化层来自于头文件 Header: ./include/caffe/vision_layers.hpp 一般输入和输出都
+是图像，这一层关注图像的2维的几何结构，并根据此结构对输入进行处理，特别是，大多
+数可视化层都通过对一些区域的操作，产生相关的区域进行输出，相反的是其他层忽视结
+合结构，只是把输入当作一个一维的大规模的向量进行处理。
 */
 namespace caffe {
 
 template <typename Dtype>
 void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
-      const vector<Blob<Dtype>*>& top) {
-  // 神经元并非链接整个输入image，而只是连接局部区域，这个区域叫作局部感受野，它的大小可以理解为 kernel size的大小。
+      const vector<Blob<Dtype>*>& top) 
+{
+  // 神经元并非链接整个输入image，而只是连接局部区域，这个区域叫作局部感受野，
+  // 它的大小可以理解为 kernel size的大小。
   // Configure the kernel size, padding, stride, and inputs.
   ConvolutionParameter conv_param = this->layer_param_.convolution_param();
   force_nd_im2col_ = conv_param.force_nd_im2col(); // 是否需要强制n维卷积

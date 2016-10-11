@@ -45,20 +45,16 @@ layer {
   bottom: "fc7"
   top: "fc8"
 }
+
 复制代码
 内积层（实际上通常指全连接层）将输入看成简单向量，产生一个单个向量形式的输出（blob的高和宽设置为1）。
-
- 
 
 Splitting：分割
 分割层是一个功能层，将输入blob分成多个输出blob。这个layer用于一个blob被输入到多个输出层的情况。
 
- 
-
 Flattening：压扁
-flatten layer也是一个功能层，将形为n * c * h * w的blob输入压扁成一个形为n * (c * h * w)的简单向量，实际上是单独压缩，每个数据是一个简单向量，维度c * h * w，共n个向量。
-
- 
+flatten layer也是一个功能层，将形为n * c * h * w的blob输入压扁成一个形为n * (c * h * w)的简单向量，
+实际上是单独压缩，每个数据是一个简单向量，维度c * h * w，共n个向量。
 
 Reshape：整形
 layer类型：Reshape
@@ -85,14 +81,18 @@ shape
     }
   }
 复制代码
-reshape layer用于改变输入维度，但是不改变数据。就像flatten layer一样，仅仅数据维度改变，过程中没有数据被拷贝。
+reshape layer用于改变输入维度，但是不改变数据。就像flatten layer一样，仅仅数据维
+度改变，过程中没有数据被拷贝。
 
-输出维度被Reshape_param指定。帧数直接使用，设置相应的输出blob的维度。在目标维度值设置时，两个特殊值被接受：
-0： 从bottom layer拷贝相应维度。如果给定dim: 0，且bottom由2作为第一维维度，那么top layer也由2作为第一维维度 ==> 不改变原始维度
--1：代表从其他维度推断这一维维度。这个行为与numpy的-1和Matlab reshape时的[ ]作用是相似的。维度被计算，使得总体输出维度与bottom layer相似。在reshape操作中至多可以设置一个-1。
-另外一个例子，指定reshape_param{shape{dim: 0 dim:-1}}作用与Flatten layer作用相同，都是将输入blob压扁成向量。
-
- 
+输出维度被Reshape_param指定。帧数直接使用，设置相应的输出blob的维度。在目标维度
+值设置时，两个特殊值被接受：
+0： 从bottom layer拷贝相应维度。如果给定dim: 0，且bottom由2作为第一维维度，那么
+top layer也由2作为第一维维度 ==> 不改变原始维度
+-1：代表从其他维度推断这一维维度。这个行为与numpy的-1和Matlab reshape时的[ ]作用
+是相似的。维度被计算，使得总体输出维度与bottom layer相似。在reshape操作中至多可
+以设置一个-1。
+另外一个例子，指定reshape_param{shape{dim: 0 dim:-1}}作用与Flatten layer作用相同，
+都是将输入blob压扁成向量。
 
 Concatenation：拼接
 
@@ -146,22 +146,14 @@ layer {
 复制代码
 axis表示目标axis，沿着给定维度切片。slice_point表示选择维度的索引，索引数目应该等于顶层blob数目减一。
 
- 
-
 Elementwise Operations
 Eltwise
-
- 
 
 Argmax
 ArgMax
 
- 
-
 Softmax
 Softmax
-
- 
 
 Mean-Variance Normalization
 MVN
@@ -173,91 +165,123 @@ namespace caffe {
 
 template <typename Dtype>
 void InnerProductLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
-      const vector<Blob<Dtype>*>& top) {
-  const int num_output = this->layer_param_.inner_product_param().num_output();
-  bias_term_ = this->layer_param_.inner_product_param().bias_term();
-  transpose_ = this->layer_param_.inner_product_param().transpose();
+      const vector<Blob<Dtype>*>& top) 
+{
+    const int num_output = this->layer_param_.inner_product_param().num_output();
+    bias_term_ = this->layer_param_.inner_product_param().bias_term();
+    transpose_ = this->layer_param_.inner_product_param().transpose();
 
-  // 全连接层输出神经元的个数  
-  N_ = num_output;
-  const int axis = bottom[0]->CanonicalAxisIndex(
-      this->layer_param_.inner_product_param().axis());
-  // Dimensions starting from "axis" are "flattened" into a single
-  // length K_ vector. For example, if bottom[0]'s shape is (N, C, H, W),
-  // and axis == 1, N inner products with dimension CHW are performed.
-  K_ = bottom[0]->count(axis);
+    // 全连接层输出神经元的个数  
+    N_ = num_output;
+    const int axis = bottom[0]->CanonicalAxisIndex(
+    this->layer_param_.inner_product_param().axis());
 
-  //在Caffe.proto里，LayerParameter中有一个repeated blobs field，但是在跟多net的定义文件即prototxt文件里并没有blobs，那么在这里将进行处理————显然，如果this->blobs_.size() > 0那么参数blob就不需要初始化了，skip；反之，则进行初始化  
-  // Check if we need to set up the weights
-  if (this->blobs_.size() > 0) {
-    LOG(INFO) << "Skipping parameter initialization";
-  } else {
-    if (bias_term_) {
-      this->blobs_.resize(2);
-    } else {
-      this->blobs_.resize(1);
-    }
-    // Initialize the weights
-    vector<int> weight_shape(2);
-    if (transpose_) {
-      weight_shape[0] = K_;
-      weight_shape[1] = N_;
-    } else {
-      weight_shape[0] = N_;
-      weight_shape[1] = K_;
-    }
-    //<strong><em>可以认为blobs_[0]的维度为N_*K_，即通常，我们将权值矩阵设为N*K维。可以这么认为，但是在实际上，在C++中数据都是存放在内存中，并没有所谓的矩阵的概念</em></strong> 
-    this->blobs_[0].reset(new Blob<Dtype>(weight_shape));
-    // fill the weights 定义了一个智能指针
-    shared_ptr<Filler<Dtype> > weight_filler(GetFiller<Dtype>(
+    // K_ 单个样本特征向量长度  
+    // Dimensions starting from "axis" are "flattened" into a single
+    // length K_ vector. For example, if bottom[0]'s shape is (N, C, H, W),
+    // and axis == 1, N inner products with dimension CHW are performed.
+    K_ = bottom[0]->count(axis);
+
+    // 在Caffe.proto里，LayerParameter中有一个repeated blobs field，但是在更多
+    // net的定义文件即prototxt文件里并没有blobs，那么在这里将进行处理__显然，如
+    // 果this->blobs_.size()>0那么参数blob就不需要初始化了,skip;反之,则进行初始化  
+    // Check if we need to set up the weights
+    if (this->blobs_.size() > 0) 
+    {
+        LOG(INFO) << "Skipping parameter initialization";
+    } 
+    else 
+    {
+        if (bias_term_) 
+        {
+            this->blobs_.resize(2);
+        } 
+        else 
+        {
+            this->blobs_.resize(1);
+        }
+    
+        // Initialize the weights
+        vector<int> weight_shape(2);
+
+        if (transpose_) 
+        {
+            weight_shape[0] = K_;
+            weight_shape[1] = N_;
+        } 
+        else 
+        {
+            weight_shape[0] = N_;
+            weight_shape[1] = K_;
+        }
+    
+        // 可以认为blobs_[0]的维度为N_*K_，即通常，我们将权值矩阵设为N*K维。可以
+        // 这么认为，但是在实际上，在C++中数据都是存放在内存中，并没有所谓的矩阵的概念
+        this->blobs_[0].reset(new Blob<Dtype>(weight_shape));
+
+        // fill the weights 定义了一个智能指针
+        shared_ptr<Filler<Dtype> > weight_filler(GetFiller<Dtype>(
         this->layer_param_.inner_product_param().weight_filler()));
-    weight_filler->Fill(this->blobs_[0].get());
-    // If necessary, intiialize and fill the bias term
-    if (bias_term_) {
-      vector<int> bias_shape(1, N_);
-      this->blobs_[1].reset(new Blob<Dtype>(bias_shape));
-      shared_ptr<Filler<Dtype> > bias_filler(GetFiller<Dtype>(
-          this->layer_param_.inner_product_param().bias_filler()));
-      bias_filler->Fill(this->blobs_[1].get());
-    }
-  }  // parameter initialization
 
-  // param_propagate_down_是从Layer<Dtype> 继承来的数据成员  
-  this->param_propagate_down_.resize(this->blobs_.size(), true);
+        weight_filler->Fill(this->blobs_[0].get());
+
+        // If necessary, intiialize and fill the bias term
+        if (bias_term_) 
+        {
+            vector<int> bias_shape(1, N_);
+            this->blobs_[1].reset(new Blob<Dtype>(bias_shape));
+            
+            shared_ptr<Filler<Dtype> > bias_filler(GetFiller<Dtype>(
+              this->layer_param_.inner_product_param().bias_filler()));
+
+            bias_filler->Fill(this->blobs_[1].get());
+        }
+    }  // parameter initialization
+
+    // param_propagate_down_是从Layer<Dtype> 继承来的数据成员  
+    this->param_propagate_down_.resize(this->blobs_.size(), true);
 }
 
 template <typename Dtype>
 void InnerProductLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
-      const vector<Blob<Dtype>*>& top) {
-  // Figure out the dimensions
-  const int axis = bottom[0]->CanonicalAxisIndex(
+      const vector<Blob<Dtype>*>& top) 
+{
+    // Figure out the dimensions
+    const int axis = bottom[0]->CanonicalAxisIndex(
       this->layer_param_.inner_product_param().axis());
-  const int new_K = bottom[0]->count(axis);
-  CHECK_EQ(K_, new_K)
+    const int new_K = bottom[0]->count(axis);
+    CHECK_EQ(K_, new_K)
       << "Input size incompatible with inner product parameters.";
 
-  // 若axis=1,则M_表示bottom[0]里的样本个数  
-  // The first "axis" dimensions are independent inner products; the total
-  // number of these is M_, the product over these dimensions.
-  M_ = bottom[0]->count(0, axis);
-  // The top shape will be the bottom shape with the flattened axes dropped,
-  // and replaced by a single axis with dimension num_output (N_).
-  vector<int> top_shape = bottom[0]->shape();
+    // 若axis=1,则M_表示bottom[0]里的样本个数  
+    // The first "axis" dimensions are independent inner products; the total
+    // number of these is M_, the product over these dimensions.
+    M_ = bottom[0]->count(0, axis);
+    
+    // The top shape will be the bottom shape with the flattened axes dropped,
+    // and replaced by a single axis with dimension num_output (N_).
+    vector<int> top_shape = bottom[0]->shape();
 
-  //重置top_shape，对于全链接层输出top往往不需要像bottom那样四维（NxCxHxW），所以重置。如果axis=1,那么top就重置为二维的，即一个矩阵。注意vector的resize操作————此种情况下，axis之前的元素保持不变</em></strong>  
-  top_shape.resize(axis + 1);
+    // 重置top_shape，对于全链接层输出top往往不需要像bottom那样四维（NxCxHxW），
+    // 所以重置。如果axis=1,那么top就重置为二维的，即一个矩阵。注意vector的
+    // resize操作__此种情况下，axis之前的元素保持不变  
+    top_shape.resize(axis + 1);
 
-  //为矩阵的第二维赋值，即矩阵的列数;矩阵的行数为M_  
-  top_shape[axis] = N_;
-  //top[0]的shape变成了M_x N_  
-  top[0]->Reshape(top_shape);
-  // Set up the bias multiplier
-  if (bias_term_) {
-    vector<int> bias_shape(1, M_);
-    bias_multiplier_.Reshape(bias_shape);
-    caffe_set(M_, Dtype(1), bias_multiplier_.mutable_cpu_data());
-  }
+    // 为矩阵的第二维赋值，即矩阵的列数;矩阵的行数为M_  
+    top_shape[axis] = N_;
+
+    // top[0]的shape变成了M_x N_  
+    top[0]->Reshape(top_shape);
+
+    // Set up the bias multiplier
+    if (bias_term_) 
+    {
+        vector<int> bias_shape(1, M_);
+        bias_multiplier_.Reshape(bias_shape);
+        caffe_set(M_, Dtype(1), bias_multiplier_.mutable_cpu_data());
+    }
 }
+
 /*
 forward实现的功能就是 y=xw'+b  
 x为输入，维度 MxK  
@@ -269,17 +293,19 @@ void caffe_cpu_gemm<float>(const CBLAS_TRANSPOSE TransA,
     const CBLAS_TRANSPOSE TransB, const int M, const int N, const int K,  
     const float alpha, const float* A, const float* B, const float beta,  
     float* C)  
-整理它的功能其实很直观，即C←α*op(A)×op(B)+β*C  
+整理它的功能其实很直观，即C←α* op(A)×op(B)+β*C  
 const CBLAS_TRANSPOSE TransA  # A是否转置  
 const CBLAS_TRANSPOSE TransB  # B是否转置  
 若TransA = CblasNoTrans, op( A ) = A；若TransA = CblasTrans, op( A ) = A'  
 M N K个人觉得为：  
-const int M <strong>//op()操作后矩阵A的行数，矩阵C的行数 op()操作一般为转置或共额转置</strong>  
-const int N <strong>//op()操作后矩阵B的列数，矩阵C的列数</strong>  
-const int K <strong>//op()操作后矩阵A的列数，矩阵B的行数</strong>  
+const int M <strong>//op()操作后矩阵A的行数，矩阵C的行数 op()操作一般为转置或共轭转置  
+const int N <strong>//op()操作后矩阵B的列数，矩阵C的列数 
+const int K <strong>//op()操作后矩阵A的列数，矩阵B的行数
 则，其中A维度是MxK，B维度是KxN，C维度为MxN  
-lda，ldb，ldc，在BLAS的文档里，这三个参数分别为ABC的行数，但是实际使用发现，在CBLAS里应该是列数，注意是经过op()操作的矩阵ABC的列数  
-<strong>全连接层的forward包括了两步:</strong>  
+lda，ldb，ldc，在BLAS的文档里，这三个参数分别为ABC的行数，但是实际使用发现，在
+CBLAS里应该是列数，注意是经过op()操作的矩阵ABC的列数  
+
+全连接层的forward包括了两步:  
 # 这一步表示 y←wx，或者说是y←xw'  
 caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasTrans, M_, N_, K_, (Dtype)1.,  
       bottom_data, weight, (Dtype)0., top_data);  
@@ -290,18 +316,22 @@ caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, 1, (Dtype)1.,
 */
 template <typename Dtype>
 void InnerProductLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
-    const vector<Blob<Dtype>*>& top) {
-  const Dtype* bottom_data = bottom[0]->cpu_data();
-  Dtype* top_data = top[0]->mutable_cpu_data();
-  const Dtype* weight = this->blobs_[0]->cpu_data();
-  caffe_cpu_gemm<Dtype>(CblasNoTrans, transpose_ ? CblasNoTrans : CblasTrans,
+    const vector<Blob<Dtype>*>& top) 
+{
+    const Dtype* bottom_data = bottom[0]->cpu_data();
+    Dtype* top_data = top[0]->mutable_cpu_data();
+    const Dtype* weight = this->blobs_[0]->cpu_data();
+    
+    caffe_cpu_gemm<Dtype>(CblasNoTrans, transpose_ ? CblasNoTrans : CblasTrans,
       M_, N_, K_, (Dtype)1.,
       bottom_data, weight, (Dtype)0., top_data);
-  if (bias_term_) {
-    caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, 1, (Dtype)1.,
-        bias_multiplier_.cpu_data(),
-        this->blobs_[1]->cpu_data(), (Dtype)1., top_data);
-  }
+    
+    if (bias_term_) 
+    {
+        caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, 1, (Dtype)1.,
+            bias_multiplier_.cpu_data(),
+            this->blobs_[1]->cpu_data(), (Dtype)1., top_data);
+    }
 }
 /*
 参考UFLDL上的公式  
@@ -318,12 +348,15 @@ caffe_cpu_gemv<Dtype>(CblasTrans, M_, N_, (Dtype)1., top_diff,
         bias_multiplier_.cpu_data(), (Dtype)0.,  
         this->blobs_[1]->mutable_cpu_diff());  
 对照公式，有：  
-公式中，<strong>b的梯度的维度应该为Nx1 ; \delta_(l+1)对应的是top_diff，维度是MxN</strong>  
-这里用到了caffe_cpu_gemv，简单来说跟上面的caffe_cpu_gemm类似，不过前者是计算矩阵和向量之间的乘法的（从英文命名可以分辨，v for vector, m for matrix）。函数头：  
+公式中，<strong>b的梯度的维度应该为Nx1 ; \delta_(l+1)对应的是top_diff，维度是MxN  
+这里用到了caffe_cpu_gemv，简单来说跟上面的caffe_cpu_gemm类似，不过前者是计算矩阵
+和向量之间的乘法的（从英文命名可以分辨，v for vector, m for matrix）。函数头：  
 void caffe_cpu_gemv<float>(const CBLAS_TRANSPOSE TransA, const int M,  
     const int N, const float alpha, const float* A, const float* x,  
     const float beta, float* y)   
-# <strong>实现的功能类似 Y←αAX + βY，若需要转置，则Y←αA'X + βY.所以个人认为ablas_sgemv()中参数MN表示的在op()操作之前的时候矩阵的行数和列数，即不管是Y←αAX + βY还是Y←αA'X + βY，都是矩阵A本身的行数和列数，而非其转置。  
+# <strong>实现的功能类似 Y←αAX + βY，若需要转置，则Y←αA'X + βY.所以个人认
+为ablas_sgemv()中参数MN表示的在op()操作之前的时候矩阵的行数和列数，即不管是
+Y←αAX + βY还是Y←αA'X + βY，都是矩阵A本身的行数和列数，而非其转置。  
 # 其中A的维度为 MxN  
 # X是一个向量，维度为 Mx1  
 # Y是结果 ，也是一个向量，维度为Nx1</strong>  
@@ -344,15 +377,17 @@ caffe_cpu_gemv<Dtype>(CblasTrans, M_, N_, (Dtype)1., top_diff,
 进行的计算实际为：(MxN)' x (Mx1) = N x 1  
   
 第三步是计算\delta^(l)：  
-<strong>在公式中有一项f’，这里面可以忽略掉最后一项f’。因为在caffe实现中，这是由Relu layer来实现的，这里只需要实现括号里面的累加就好了，这个累加其实可以等价于矩阵乘法：</strong>  
+<strong>在公式中有一项f’，这里面可以忽略掉最后一项f’。因为在caffe实现中，这是
+由Relu layer来实现的，这里只需要实现括号里面的累加就好了，这个累加其实可以等价
+于矩阵乘法：  
 caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, K_, N_, (Dtype)1.,  
         top_diff, this->blobs_[0]->cpu_data(), (Dtype)0.,  
         (*bottom)[0]->mutable_cpu_diff());  
-<strong># top_diff为\delta^(l+1) 维度 MxN  
+# top_diff为\delta^(l+1) 维度 MxN  
 # this->blobs_[0]->cpu_data()为W^(l) 维度 NxK  
 # (*bottom)[0]->mutable_cpu_diff()是要计算的结果，也就是\delta^(l) 维度是MxK  
 #即，当前层的\delta^(l) 维度是MxK，下一层的\delta^(l+1) 维度是MxN  
-</strong> 
+ 
 */
 template <typename Dtype>
 void InnerProductLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,

@@ -85,7 +85,7 @@ void InternalThread::StopInternalThread()
         } 
         catch (boost::thread_interrupted&) 
         { 
-            //如果被打断，啥也不干，因为是自己要打断的^_^  
+            // 如果被打断，啥也不干，因为是自己要打断的^_^  
         } 
         catch (std::exception& e) 
         { 

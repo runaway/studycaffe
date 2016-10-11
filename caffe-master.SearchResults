@@ -1,2 +1,14 @@
----- Function uses casting from int to unsigned to c... Matches (1 in 1 files) ----
-Im2col.cpp (src\caffe\util):// Function uses casting from int to unsigned to compare if value of
+---- StartInternalThread Matches (13 in 6 files) ----
+Base_data_layer.cpp (src\caffe\layers):  StartInternalThread();  
+Base_data_layer.cpp (src\caffe\layers):// 在StartInternalThread开启线程后就会执行下面自己定义的函数  
+Data_reader.cpp (src\caffe):  StartInternalThread();
+Internal_thread.cpp (src\caffe):void InternalThread::StartInternalThread()
+Internal_thread.cpp (src\caffe):    关于两个StartInternalThread函数, 调用了InternalThreadEntry()函数.而这个函数里有 
+Internal_thread.hpp (include\caffe):  void StartInternalThread();
+Parallel.cpp (src\caffe):        //syncs[i]->StartInternalThread()
+Parallel.cpp (src\caffe):        //    syncs[i]->StartInternalThread();
+Parallel.cpp (src\caffe):        syncs[i]->StartInternalThread();
+Test_internal_thread.cpp (src\caffe\test):  thread.StartInternalThread();
+Test_internal_thread.cpp (src\caffe\test):  t1.StartInternalThread();
+Test_internal_thread.cpp (src\caffe\test):  t2.StartInternalThread();
+Test_internal_thread.cpp (src\caffe\test):  t3.StartInternalThread();

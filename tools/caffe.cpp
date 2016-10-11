@@ -241,10 +241,12 @@ int train()
     "but not both.";
 
     // 从指定的solver的prototxt文件中读取SolverParameter 
-    // 实例化SolverParameter类，该类保存solver参数和相应的方法（SoverParameter是由google protobuffer编译过来的类，具体声明可以见代码文件build/src/caffe/proto/caffe.pb.h）；
+    // 实例化SolverParameter类，该类保存solver参数和相应的方法（SoverParameter
+    // 是由google protobuffer编译过来的类，具体声明可以见代码文件build/src/caffe/proto/caffe.pb.h）；
     caffe::SolverParameter solver_param;
 
-    // 将-solver指定solver.prototxt文件内容解析到solver_param中，该函数声明在include/caffe/util/upgrade_proto.hpp中，实现在src/caffe/util/upgrade_proto.cpp中；
+    // 将-solver指定solver.prototxt文件内容解析到solver_param中，该函数声明在
+    // include/caffe/util/upgrade_proto.hpp中，实现在src/caffe/util/upgrade_proto.cpp中；
     caffe::ReadSolverParamsFromTextFileOrDie(FLAGS_solver, &solver_param);
 
     // 根据命令参数-gpu或者solver.prototxt提供的信息设置GPU；
@@ -610,5 +612,12 @@ int main(int argc, char** argv)
 }
 
 /*
-gflags是google的一个开源的处理命令行参数的库。在使用命令行参数的文件文件中（源文件或头文件），首先使用一下定义语句进行变量的定义。DEFINE_int32，DEFINE_int64，DEFINE_bool，DEFINE_double，DEFINE_string等，语法为：DEFINE_int32(name, default_value, "description")。接着你就可以使用FLAGS_name变量了，这些变量的值则是由命令行参数传递，无则为默认值，在其他代码文件中若想用该命令参数，可以用DECLARE_int32(name)声明（name为int32类型，也可以使用其他支持的类型）。在caffe.cpp中有很多FLAGS_name定义，如DEFINE_string(gpu,"","some description"），则命令行后-gpu 0，表示FLAGS_gpu=0，默认值为空。
+gflags是google的一个开源的处理命令行参数的库。在使用命令行参数的文件文件中（源文
+件或头文件），首先使用一下定义语句进行变量的定义。DEFINE_int32，DEFINE_int64，
+DEFINE_bool，DEFINE_double，DEFINE_string等，语法为：DEFINE_int32(name, 
+default_value, "description")。接着你就可以使用FLAGS_name变量了，这些变量的值则
+是由命令行参数传递，无则为默认值，在其他代码文件中若想用该命令参数，可以用
+DECLARE_int32(name)声明（name为int32类型，也可以使用其他支持的类型）。在
+caffe.cpp中有很多FLAGS_name定义，如DEFINE_string(gpu,"","some description"），
+则命令行后-gpu 0，表示FLAGS_gpu=0，默认值为空。
 */
