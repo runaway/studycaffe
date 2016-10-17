@@ -402,101 +402,135 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 
 template <typename Dtype>
 void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
-      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
+      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) 
+{
 
-  // propagate_down的妙处于此！caffe.proto里面也有一个相同名字的定义      
-  if (!propagate_down[0]) {
-    return;
-  }
-  const Dtype* top_diff = top[0]->cpu_diff();
-
-  // 模板类Blob的mutable_cpu_diff()方法中使用了强制类型转换static_cast<Dtype*>()    
-  // 初始化bottom_diff 为0
-  Dtype* bottom_diff = bottom[0]->mutable_cpu_diff();
-  // Different pooling methods. We explicitly do the switch outside the for
-  // loop to save time, although this results in more codes.
-  caffe_set(bottom[0]->count(), Dtype(0), bottom_diff);
-  // We'll output the mask to top[1] if it's of size >1.
-  const bool use_top_mask = top.size() > 1;
-  const int* mask = NULL;  // suppress warnings about uninitialized variables
-  const Dtype* top_mask = NULL;
-  switch (this->layer_param_.pooling_param().pool()) {
-  case PoolingParameter_PoolMethod_MAX:
-    // The main loop
-    if (use_top_mask) {
-      top_mask = top[1]->cpu_data();
-    } else {
-    //取数据成员max_idx_的地址  
-      mask = max_idx_.cpu_data();
+    // propagate_down的妙处于此！caffe.proto里面也有一个相同名字的定义      
+    if (!propagate_down[0]) 
+    {
+        return;
     }
-    for (int n = 0; n < top[0]->num(); ++n) {
-      for (int c = 0; c < channels_; ++c) {
-        for (int ph = 0; ph < pooled_height_; ++ph) {
-          for (int pw = 0; pw < pooled_width_; ++pw) {
-            //这里的index是前向传播池化后的特征图中元素的位置索引  
-            const int index = ph * pooled_width_ + pw;
-            const int bottom_index =
-                use_top_mask ? top_mask[index] : mask[index];
 
-            // 计算“敏感值”分布
-            bottom_diff[bottom_index] += top_diff[index];
-          }
+    const Dtype* top_diff = top[0]->cpu_diff();
+
+    // 模板类Blob的mutable_cpu_diff()方法中使用了强制类型转换static_cast<Dtype*>()    
+    // 初始化bottom_diff 为0
+    Dtype* bottom_diff = bottom[0]->mutable_cpu_diff();
+
+    // Different pooling methods. We explicitly do the switch outside the for
+    // loop to save time, although this results in more codes.
+    caffe_set(bottom[0]->count(), Dtype(0), bottom_diff);
+
+    // We'll output the mask to top[1] if it's of size >1.
+    const bool use_top_mask = top.size() > 1;
+    const int* mask = NULL;  // suppress warnings about uninitialized variables
+    const Dtype* top_mask = NULL;
+
+    switch (this->layer_param_.pooling_param().pool()) 
+    {
+
+    case PoolingParameter_PoolMethod_MAX:
+
+        // The main loop
+        if (use_top_mask) 
+        {
+            top_mask = top[1]->cpu_data();
+        } 
+        else 
+        {
+            // 取数据成员max_idx_的地址  
+            mask = max_idx_.cpu_data();
         }
-        // 采样层输出的残传播给输入。由于是最大采样方法，输出存的都是输入范围内最大的值，所以残差传播的时候也只有范围内最大的值受影响
-        bottom_diff += bottom[0]->offset(0, 1);
+        
+        for (int n = 0; n < top[0]->num(); ++n) 
+        {
+            for (int c = 0; c < channels_; ++c) 
+            {
+                for (int ph = 0; ph < pooled_height_; ++ph) 
+                {
+                    for (int pw = 0; pw < pooled_width_; ++pw) 
+                    {
+                        // 这里的index是前向传播池化后的特征图中元素的位置索引  
+                        const int index = ph * pooled_width_ + pw;
+                        const int bottom_index =
+                            use_top_mask ? top_mask[index] : mask[index];
 
-        // 指向下一个channel
-        top_diff += top[0]->offset(0, 1);
-        if (use_top_mask) {
-          top_mask += top[0]->offset(0, 1);
-        } else {
-          mask += top[0]->offset(0, 1);
-        }
-      }
-    }
-    break;
-  case PoolingParameter_PoolMethod_AVE:
-    // The main loop
-    for (int n = 0; n < top[0]->num(); ++n) {
-      for (int c = 0; c < channels_; ++c) {
-        for (int ph = 0; ph < pooled_height_; ++ph) {
-          for (int pw = 0; pw < pooled_width_; ++pw) {
-            int hstart = ph * stride_h_ - pad_h_;
-            int wstart = pw * stride_w_ - pad_w_;
-            int hend = min(hstart + kernel_h_, height_ + pad_h_);
-            int wend = min(wstart + kernel_w_, width_ + pad_w_);
-            int pool_size = (hend - hstart) * (wend - wstart);
-            hstart = max(hstart, 0);
-            wstart = max(wstart, 0);
-            hend = min(hend, height_);
-            wend = min(wend, width_);
+                        // 计算“敏感值”分布
+                        bottom_diff[bottom_index] += top_diff[index];
+                    }
+                }
+                
+                // 采样层输出的残传播给输入。由于是最大采样方法，输出存的都是输入范围内最大的值，所以残差传播的时候也只有范围内最大的值受影响
+                bottom_diff += bottom[0]->offset(0, 1);
 
-            // 遍历pooling区域
-            for (int h = hstart; h < hend; ++h) {
-              for (int w = wstart; w < wend; ++w) {
+                // 指向下一个channel
+                top_diff += top[0]->offset(0, 1);
 
-                // 采样层输出的残差传播给输入，由于是平均采样，所以权重都是
-                // 反向传播时各层间“误差敏感”总和不变，所以对应每个值需要平摊
-                bottom_diff[h * width_ + w] +=
-                  top_diff[ph * pooled_width_ + pw] / pool_size;
-              }
+                if (use_top_mask) 
+                {
+                    top_mask += top[0]->offset(0, 1);
+                } 
+                else 
+                {
+                    mask += top[0]->offset(0, 1);
+                }
             }
-          }
         }
-        // offset
-        bottom_diff += bottom[0]->offset(0, 1);
+    break;
 
-        // 指向下一个channel
-        top_diff += top[0]->offset(0, 1);
-      }
+    case PoolingParameter_PoolMethod_AVE:
+
+        // The main loop
+        for (int n = 0; n < top[0]->num(); ++n) 
+        {
+            for (int c = 0; c < channels_; ++c) 
+            {
+                for (int ph = 0; ph < pooled_height_; ++ph) 
+                {
+                    for (int pw = 0; pw < pooled_width_; ++pw) 
+                    {
+                        int hstart = ph * stride_h_ - pad_h_;
+                        int wstart = pw * stride_w_ - pad_w_;
+                        int hend = min(hstart + kernel_h_, height_ + pad_h_);
+                        int wend = min(wstart + kernel_w_, width_ + pad_w_);
+                        int pool_size = (hend - hstart) * (wend - wstart);
+                        hstart = max(hstart, 0);
+                        wstart = max(wstart, 0);
+                        hend = min(hend, height_);
+                        wend = min(wend, width_);
+
+                        // 遍历pooling区域
+                        for (int h = hstart; h < hend; ++h) 
+                        {
+                            for (int w = wstart; w < wend; ++w) 
+                            {
+                                // 采样层输出的残差传播给输入，由于是平均采样，所以权重都是
+                                // 反向传播时各层间“误差敏感”总和不变，所以对应每个值需要平摊
+                                bottom_diff[h * width_ + w] +=
+                                  top_diff[ph * pooled_width_ + pw] / pool_size;
+                            }
+                        }
+                    }
+                }
+                
+                // offset
+                bottom_diff += bottom[0]->offset(0, 1);
+
+                // 指向下一个channel
+                top_diff += top[0]->offset(0, 1);
+            }
+        }
+    break;
+
+    case PoolingParameter_PoolMethod_STOCHASTIC:
+
+        NOT_IMPLEMENTED;
+    break;
+
+    default:
+        LOG(FATAL) << "Unknown pooling method.";
+        
     }
-    break;
-  case PoolingParameter_PoolMethod_STOCHASTIC:
-    NOT_IMPLEMENTED;
-    break;
-  default:
-    LOG(FATAL) << "Unknown pooling method.";
-  }
 }
 
 
